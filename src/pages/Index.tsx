@@ -5,6 +5,7 @@ import { ProductionTracker } from '@/components/ProductionTracker';
 import { ProductionChart } from '@/components/ProductionChart';
 import { SalesTracker } from '@/components/SalesTracker';
 import { SalesChart } from '@/components/SalesChart';
+import { PinGate, useDeviceAuth } from '@/components/PinGate';
 import { Users, BarChart3, Package, TrendingUp, DollarSign, LineChart } from 'lucide-react';
 
 type Tab = 'attendance' | 'attendance-chart' | 'production' | 'production-chart' | 'sales' | 'sales-chart';
@@ -20,6 +21,11 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState<Tab>('attendance');
+  const { authorized, authorize } = useDeviceAuth();
+
+  if (!authorized) {
+    return <PinGate onAuthorized={authorize} />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,7 +38,7 @@ export default function Index() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">Control de Gestión</h1>
-              <p className="text-xs text-muted-foreground">Asistencia y Producción</p>
+              <p className="text-xs text-muted-foreground">Asistencia, Producción y Ventas</p>
             </div>
           </div>
         </div>
