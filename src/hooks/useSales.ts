@@ -21,15 +21,13 @@ export function useSales() {
     localStorage.setItem(SALES_KEY, JSON.stringify(records));
   }, [records]);
 
-  const addRecord = (productName: string, quantity: number, unitPrice: number, client?: string, notes?: string) => {
+  const addRecord = (productName: string, quantity: number, client?: string, notes?: string) => {
     const today = new Date().toISOString().split('T')[0];
     setRecords(prev => [...prev, {
       id: Date.now().toString(),
       date: today,
       productName,
       quantity,
-      unitPrice,
-      total: quantity * unitPrice,
       client,
       notes,
     }]);
@@ -56,11 +54,11 @@ export function useSales() {
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const dayRecords = monthRecords.filter(r => r.date === dateStr);
-      const totalVentas = dayRecords.reduce((sum, r) => sum + r.total, 0);
+      const totalCantidad = dayRecords.reduce((sum, r) => sum + r.quantity, 0);
       dailyStats.push({
         day,
         date: dateStr,
-        ventas: totalVentas,
+        cantidad: totalCantidad,
         registros: dayRecords.length,
       });
     }
@@ -76,7 +74,7 @@ export function useSales() {
 
     const breakdown: Record<string, number> = {};
     monthRecords.forEach(r => {
-      breakdown[r.productName] = (breakdown[r.productName] || 0) + r.total;
+      breakdown[r.productName] = (breakdown[r.productName] || 0) + r.quantity;
     });
 
     return Object.entries(breakdown).map(([name, total]) => ({ name, total }));

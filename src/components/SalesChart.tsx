@@ -24,8 +24,8 @@ export function SalesChart() {
 
   const dailyData = getMonthlyStats(month, year);
   const breakdown = getMonthlyProductBreakdown(month, year);
-  const filteredDaily = dailyData.filter(d => d.ventas > 0);
-  const totalMonth = dailyData.reduce((s, d) => s + d.ventas, 0);
+  const filteredDaily = dailyData.filter(d => d.cantidad > 0);
+  const totalMonth = dailyData.reduce((s, d) => s + d.cantidad, 0);
 
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear(y => y - 1); }
@@ -56,8 +56,8 @@ export function SalesChart() {
 
       <div className="glass-card p-4 text-center glow-orange">
         <p className="text-sm text-muted-foreground">Total del Mes</p>
-        <p className="text-4xl font-bold text-gradient-orange">${totalMonth.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
-        <p className="text-sm text-muted-foreground">en ventas</p>
+        <p className="text-4xl font-bold text-gradient-orange">{totalMonth.toLocaleString()}</p>
+        <p className="text-sm text-muted-foreground">unidades vendidas</p>
       </div>
 
       <div className="glass-card p-6">
@@ -67,9 +67,8 @@ export function SalesChart() {
             <BarChart data={filteredDaily}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 20%)" />
               <XAxis dataKey="day" stroke="hsl(220 10% 55%)" fontSize={12} />
-              <YAxis stroke="hsl(220 10% 55%)" fontSize={12} tickFormatter={v => `$${v}`} />
+              <YAxis stroke="hsl(220 10% 55%)" fontSize={12} />
               <Tooltip
-                formatter={(value: number) => [`$${value.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 'Ventas']}
                 contentStyle={{
                   backgroundColor: 'hsl(220 18% 13%)',
                   border: '1px solid hsl(220 14% 20%)',
@@ -77,7 +76,7 @@ export function SalesChart() {
                   color: 'hsl(30 10% 92%)',
                 }}
               />
-              <Bar dataKey="ventas" name="Ventas" fill="hsl(25 95% 53%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="cantidad" name="Cantidad" fill="hsl(25 95% 53%)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
@@ -107,7 +106,6 @@ export function SalesChart() {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number) => [`$${value.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 'Total']}
                 contentStyle={{
                   backgroundColor: 'hsl(220 18% 13%)',
                   border: '1px solid hsl(220 14% 20%)',

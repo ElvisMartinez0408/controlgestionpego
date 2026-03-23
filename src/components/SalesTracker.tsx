@@ -8,29 +8,26 @@ export function SalesTracker() {
   const { addRecord, removeRecord, getTodayRecords } = useSales();
   const [productName, setProductName] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [unitPrice, setUnitPrice] = useState('');
   const [client, setClient] = useState('');
   const [notes, setNotes] = useState('');
 
   const todayRecords = getTodayRecords();
-  const totalToday = todayRecords.reduce((s, r) => s + r.total, 0);
+  const totalToday = todayRecords.reduce((s, r) => s + r.quantity, 0);
 
   const today = new Date().toLocaleDateString('es-MX', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
   const handleAdd = () => {
-    if (productName.trim() && Number(quantity) > 0 && Number(unitPrice) > 0) {
+    if (productName.trim() && Number(quantity) > 0) {
       addRecord(
         productName.trim(),
         Number(quantity),
-        Number(unitPrice),
         client.trim() || undefined,
         notes.trim() || undefined
       );
       setProductName('');
       setQuantity('');
-      setUnitPrice('');
       setClient('');
       setNotes('');
     }
@@ -47,7 +44,7 @@ export function SalesTracker() {
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Plus className="w-4 h-4 text-primary" /> Nueva Venta
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Producto</label>
             <Input
@@ -66,18 +63,6 @@ export function SalesTracker() {
               placeholder="0"
               className="bg-secondary border-border"
               min="0"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Precio Unitario</label>
-            <Input
-              type="number"
-              value={unitPrice}
-              onChange={e => setUnitPrice(e.target.value)}
-              placeholder="$0.00"
-              className="bg-secondary border-border"
-              min="0"
-              step="0.01"
             />
           </div>
           <div>
@@ -107,7 +92,7 @@ export function SalesTracker() {
 
       <div className="glass-card p-4 glow-orange">
         <p className="text-sm text-muted-foreground">Total vendido hoy</p>
-        <p className="text-4xl font-bold text-gradient-orange">${totalToday.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+        <p className="text-4xl font-bold text-gradient-orange">{totalToday.toLocaleString()}</p>
         <p className="text-sm text-muted-foreground">{todayRecords.length} ventas registradas</p>
       </div>
 
@@ -118,8 +103,7 @@ export function SalesTracker() {
             <div key={record.id} className="glass-card p-3 flex items-center justify-between">
               <div>
                 <span className="font-medium text-foreground">{record.productName}</span>
-                <span className="text-muted-foreground ml-2 text-sm">{record.quantity} × ${record.unitPrice.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                <span className="text-primary ml-2 font-bold">${record.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                <span className="text-primary ml-2 font-bold">{record.quantity} unidades</span>
                 {record.client && (
                   <span className="text-xs text-muted-foreground ml-2">• {record.client}</span>
                 )}
