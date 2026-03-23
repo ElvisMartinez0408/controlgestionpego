@@ -3,15 +3,19 @@ import { AttendanceTracker } from '@/components/AttendanceTracker';
 import { AttendanceChart } from '@/components/AttendanceChart';
 import { ProductionTracker } from '@/components/ProductionTracker';
 import { ProductionChart } from '@/components/ProductionChart';
-import { Users, BarChart3, Package, TrendingUp } from 'lucide-react';
+import { SalesTracker } from '@/components/SalesTracker';
+import { SalesChart } from '@/components/SalesChart';
+import { Users, BarChart3, Package, TrendingUp, DollarSign, LineChart } from 'lucide-react';
 
-type Tab = 'attendance' | 'attendance-chart' | 'production' | 'production-chart';
+type Tab = 'attendance' | 'attendance-chart' | 'production' | 'production-chart' | 'sales' | 'sales-chart';
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'attendance', label: 'Asistencia', icon: <Users className="w-4 h-4" /> },
   { id: 'attendance-chart', label: 'Gráfica Asistencia', icon: <BarChart3 className="w-4 h-4" /> },
   { id: 'production', label: 'Producción', icon: <Package className="w-4 h-4" /> },
   { id: 'production-chart', label: 'Gráfica Producción', icon: <TrendingUp className="w-4 h-4" /> },
+  { id: 'sales', label: 'Ventas', icon: <DollarSign className="w-4 h-4" /> },
+  { id: 'sales-chart', label: 'Gráfica Ventas', icon: <LineChart className="w-4 h-4" /> },
 ];
 
 export default function Index() {
@@ -62,6 +66,8 @@ export default function Index() {
         {activeTab === 'attendance-chart' && <AttendanceChart />}
         {activeTab === 'production' && <ProductionTracker />}
         {activeTab === 'production-chart' && <ProductionChart />}
+        {activeTab === 'sales' && <SalesTracker />}
+        {activeTab === 'sales-chart' && <SalesChart />}
       </main>
     </div>
   );

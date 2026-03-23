@@ -21,3 +21,14 @@ export interface ProductionRecord {
   unit: string;
   notes?: string;
 }
+
+export interface SaleRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  client?: string;
+  notes?: string;
+}
