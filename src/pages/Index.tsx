@@ -66,6 +66,8 @@ export default function Index() {
         {activeTab === 'attendance-chart' && <AttendanceChart />}
         {activeTab === 'production' && <ProductionTracker />}
         {activeTab === 'production-chart' && <ProductionChart />}
+        {activeTab === 'sales' && <SalesTracker />}
+        {activeTab === 'sales-chart' && <SalesChart />}
       </main>
     </div>
   );
