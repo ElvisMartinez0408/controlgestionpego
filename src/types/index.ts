@@ -27,8 +27,6 @@ export interface SaleRecord {
   date: string; // YYYY-MM-DD
   productName: string;
   quantity: number;
-  unitPrice: number;
-  total: number;
   client?: string;
   notes?: string;
 }
