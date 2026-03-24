@@ -1,104 +1,110 @@
-import { useState, useEffect } from 'react';
-import { Employee, AttendanceRecord } from '@/types';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
-const EMPLOYEES_KEY = 'employees';
-const ATTENDANCE_KEY = 'attendance';
+export interface Employee {
+  id: string;
+  name: string;
+  position: string;
+}
 
-const defaultEmployees: Employee[] = [
-  { id: '1', name: 'Carlos García', position: 'Operador' },
-  { id: '2', name: 'María López', position: 'Supervisora' },
-  { id: '3', name: 'Juan Martínez', position: 'Técnico' },
-  { id: '4', name: 'Ana Rodríguez', position: 'Empacadora' },
-];
-
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : fallback;
-  } catch {
-    return fallback;
-  }
+export interface AttendanceRecord {
+  id: string;
+  employee_id: string;
+  date: string;
+  check_in?: string | null;
+  check_out?: string | null;
+  status: string;
 }
 
 export function useAttendance() {
-  const [employees, setEmployees] = useState<Employee[]>(() =>
-    loadFromStorage(EMPLOYEES_KEY, defaultEmployees)
-  );
-  const [records, setRecords] = useState<AttendanceRecord[]>(() =>
-    loadFromStorage(ATTENDANCE_KEY, [])
-  );
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchEmployees = useCallback(async () => {
+    const { data } = await supabase.from('employees').select('*').order('name');
+    if (data) setEmployees(data);
+  }, []);
+
+  const fetchRecords = useCallback(async () => {
+    const { data } = await supabase.from('attendance_records').select('*').order('date', { ascending: false });
+    if (data) setRecords(data);
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
-  }, [employees]);
+    Promise.all([fetchEmployees(), fetchRecords()]).then(() => setLoading(false));
+  }, [fetchEmployees, fetchRecords]);
 
-  useEffect(() => {
-    localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(records));
-  }, [records]);
-
-  const addEmployee = (name: string, position: string) => {
-    const newEmployee: Employee = {
-      id: Date.now().toString(),
-      name,
-      position,
-    };
-    setEmployees(prev => [...prev, newEmployee]);
+  const addEmployee = async (name: string, position: string) => {
+    const { data } = await supabase.from('employees').insert({ name, position }).select().single();
+    if (data) setEmployees(prev => [...prev, data]);
   };
 
-  const removeEmployee = (id: string) => {
+  const removeEmployee = async (id: string) => {
+    await supabase.from('employees').delete().eq('id', id);
     setEmployees(prev => prev.filter(e => e.id !== id));
-    setRecords(prev => prev.filter(r => r.employeeId !== id));
+    setRecords(prev => prev.filter(r => r.employee_id !== id));
   };
 
-  const checkIn = (employeeId: string) => {
+  const checkIn = async (employeeId: string) => {
     const today = new Date().toISOString().split('T')[0];
     const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-    const existing = records.find(r => r.employeeId === employeeId && r.date === today);
-    
+    const existing = records.find(r => r.employee_id === employeeId && r.date === today);
+
     if (existing) {
-      setRecords(prev => prev.map(r =>
-        r.id === existing.id ? { ...r, checkIn: now, status: 'present' as const } : r
-      ));
+      const { data } = await supabase.from('attendance_records')
+        .update({ check_in: now, check_out: null, status: 'present' })
+        .eq('id', existing.id).select().single();
+      if (data) setRecords(prev => prev.map(r => r.id === existing.id ? data : r));
     } else {
-      setRecords(prev => [...prev, {
-        id: Date.now().toString(),
-        employeeId,
-        date: today,
-        checkIn: now,
-        status: 'present',
-      }]);
+      const { data } = await supabase.from('attendance_records')
+        .insert({ employee_id: employeeId, date: today, check_in: now, status: 'present' })
+        .select().single();
+      if (data) setRecords(prev => [...prev, data]);
     }
   };
 
-  const checkOut = (employeeId: string) => {
+  const checkOut = async (employeeId: string) => {
     const today = new Date().toISOString().split('T')[0];
     const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-    setRecords(prev => prev.map(r =>
-      r.employeeId === employeeId && r.date === today ? { ...r, checkOut: now } : r
-    ));
+    const existing = records.find(r => r.employee_id === employeeId && r.date === today);
+    if (existing) {
+      const { data } = await supabase.from('attendance_records')
+        .update({ check_out: now })
+        .eq('id', existing.id).select().single();
+      if (data) setRecords(prev => prev.map(r => r.id === existing.id ? data : r));
+    }
   };
 
-  const markAbsent = (employeeId: string) => {
+  const markAbsent = async (employeeId: string) => {
     const today = new Date().toISOString().split('T')[0];
-    const existing = records.find(r => r.employeeId === employeeId && r.date === today);
-    
+    const existing = records.find(r => r.employee_id === employeeId && r.date === today);
+
     if (existing) {
-      setRecords(prev => prev.map(r =>
-        r.id === existing.id ? { ...r, status: 'absent' as const, checkIn: undefined, checkOut: undefined } : r
-      ));
+      const { data } = await supabase.from('attendance_records')
+        .update({ status: 'absent', check_in: null, check_out: null })
+        .eq('id', existing.id).select().single();
+      if (data) setRecords(prev => prev.map(r => r.id === existing.id ? data : r));
     } else {
-      setRecords(prev => [...prev, {
-        id: Date.now().toString(),
-        employeeId,
-        date: today,
-        status: 'absent',
-      }]);
+      const { data } = await supabase.from('attendance_records')
+        .insert({ employee_id: employeeId, date: today, status: 'absent' })
+        .select().single();
+      if (data) setRecords(prev => [...prev, data]);
+    }
+  };
+
+  const resetRecord = async (employeeId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const existing = records.find(r => r.employee_id === employeeId && r.date === today);
+    if (existing) {
+      await supabase.from('attendance_records').delete().eq('id', existing.id);
+      setRecords(prev => prev.filter(r => r.id !== existing.id));
     }
   };
 
   const getTodayRecord = (employeeId: string) => {
     const today = new Date().toISOString().split('T')[0];
-    return records.find(r => r.employeeId === employeeId && r.date === today);
+    return records.find(r => r.employee_id === employeeId && r.date === today);
   };
 
   const getMonthlyStats = (month: number, year: number) => {
@@ -128,11 +134,13 @@ export function useAttendance() {
   return {
     employees,
     records,
+    loading,
     addEmployee,
     removeEmployee,
     checkIn,
     checkOut,
     markAbsent,
+    resetRecord,
     getTodayRecord,
     getMonthlyStats,
   };

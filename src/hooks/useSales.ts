@@ -1,39 +1,37 @@
-import { useState, useEffect } from 'react';
-import { SaleRecord } from '@/types';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
-const SALES_KEY = 'sales';
-
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : fallback;
-  } catch {
-    return fallback;
-  }
+export interface SaleRecord {
+  id: string;
+  date: string;
+  product_name: string;
+  quantity: number;
+  client?: string | null;
+  notes?: string | null;
 }
 
 export function useSales() {
-  const [records, setRecords] = useState<SaleRecord[]>(() =>
-    loadFromStorage(SALES_KEY, [])
-  );
+  const [records, setRecords] = useState<SaleRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    localStorage.setItem(SALES_KEY, JSON.stringify(records));
-  }, [records]);
+  const fetchRecords = useCallback(async () => {
+    const { data } = await supabase.from('sale_records').select('*').order('date', { ascending: false });
+    if (data) setRecords(data);
+    setLoading(false);
+  }, []);
 
-  const addRecord = (productName: string, quantity: number, client?: string, notes?: string) => {
+  useEffect(() => { fetchRecords(); }, [fetchRecords]);
+
+  const addRecord = async (productName: string, quantity: number, client?: string, notes?: string) => {
     const today = new Date().toISOString().split('T')[0];
-    setRecords(prev => [...prev, {
-      id: Date.now().toString(),
-      date: today,
-      productName,
-      quantity,
-      client,
-      notes,
-    }]);
+    const { data } = await supabase.from('sale_records')
+      .insert({ product_name: productName, quantity, date: today, client: client || null, notes: notes || null })
+      .select().single();
+    if (data) setRecords(prev => [data, ...prev]);
   };
 
-  const removeRecord = (id: string) => {
+  const removeRecord = async (id: string) => {
+    await supabase.from('sale_records').delete().eq('id', id);
     setRecords(prev => prev.filter(r => r.id !== id));
   };
 
@@ -74,7 +72,7 @@ export function useSales() {
 
     const breakdown: Record<string, number> = {};
     monthRecords.forEach(r => {
-      breakdown[r.productName] = (breakdown[r.productName] || 0) + r.quantity;
+      breakdown[r.product_name] = (breakdown[r.product_name] || 0) + r.quantity;
     });
 
     return Object.entries(breakdown).map(([name, total]) => ({ name, total }));
@@ -82,6 +80,7 @@ export function useSales() {
 
   return {
     records,
+    loading,
     addRecord,
     removeRecord,
     getTodayRecords,

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Dashboard } from '@/components/Dashboard';
 import { AttendanceTracker } from '@/components/AttendanceTracker';
 import { AttendanceChart } from '@/components/AttendanceChart';
 import { ProductionTracker } from '@/components/ProductionTracker';
@@ -6,11 +7,12 @@ import { ProductionChart } from '@/components/ProductionChart';
 import { SalesTracker } from '@/components/SalesTracker';
 import { SalesChart } from '@/components/SalesChart';
 import { PinGate, useDeviceAuth } from '@/components/PinGate';
-import { Users, BarChart3, Package, TrendingUp, DollarSign, LineChart } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, Package, TrendingUp, DollarSign, LineChart } from 'lucide-react';
 
-type Tab = 'attendance' | 'attendance-chart' | 'production' | 'production-chart' | 'sales' | 'sales-chart';
+type Tab = 'dashboard' | 'attendance' | 'attendance-chart' | 'production' | 'production-chart' | 'sales' | 'sales-chart';
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: 'dashboard', label: 'Tablero', icon: <LayoutDashboard className="w-4 h-4" /> },
   { id: 'attendance', label: 'Asistencia', icon: <Users className="w-4 h-4" /> },
   { id: 'attendance-chart', label: 'Gráfica Asistencia', icon: <BarChart3 className="w-4 h-4" /> },
   { id: 'production', label: 'Producción', icon: <Package className="w-4 h-4" /> },
@@ -20,7 +22,7 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function Index() {
-  const [activeTab, setActiveTab] = useState<Tab>('attendance');
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const { authorized, authorize } = useDeviceAuth();
 
   if (!authorized) {
@@ -29,7 +31,6 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
@@ -44,7 +45,6 @@ export default function Index() {
         </div>
       </header>
 
-      {/* Tab Navigation */}
       <nav className="border-b border-border bg-card/30">
         <div className="container mx-auto px-4">
           <div className="flex gap-1 overflow-x-auto py-2">
@@ -66,8 +66,8 @@ export default function Index() {
         </div>
       </nav>
 
-      {/* Content */}
       <main className="container mx-auto px-4 py-6">
+        {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'attendance' && <AttendanceTracker />}
         {activeTab === 'attendance-chart' && <AttendanceChart />}
         {activeTab === 'production' && <ProductionTracker />}
