@@ -14,7 +14,125 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendance_records: {
+        Row: {
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          date: string
+          employee_id: string
+          id: string
+          status: string
+        }
+        Insert: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date: string
+          employee_id: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date?: string
+          employee_id?: string
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          position: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          position: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          position?: string
+        }
+        Relationships: []
+      }
+      production_records: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          product_name: string
+          quantity: number
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          notes?: string | null
+          product_name: string
+          quantity: number
+          unit?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          product_name?: string
+          quantity?: number
+          unit?: string
+        }
+        Relationships: []
+      }
+      sale_records: {
+        Row: {
+          client: string | null
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          product_name: string
+          quantity: number
+        }
+        Insert: {
+          client?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          notes?: string | null
+          product_name: string
+          quantity: number
+        }
+        Update: {
+          client?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          product_name?: string
+          quantity?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
