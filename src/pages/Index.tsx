@@ -7,6 +7,7 @@ import { ProductionChart } from '@/components/ProductionChart';
 import { SalesTracker } from '@/components/SalesTracker';
 import { SalesChart } from '@/components/SalesChart';
 import { PinGate, useDeviceAuth } from '@/components/PinGate';
+import { ExportButton } from '@/components/ExportButton';
 import { LayoutDashboard, Users, BarChart3, Package, TrendingUp, DollarSign, LineChart } from 'lucide-react';
 
 type Tab = 'dashboard' | 'attendance' | 'attendance-chart' | 'production' | 'production-chart' | 'sales' | 'sales-chart';
