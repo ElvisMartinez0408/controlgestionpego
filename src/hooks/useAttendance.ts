@@ -46,31 +46,31 @@ export function useAttendance() {
     setRecords(prev => prev.filter(r => r.employee_id !== id));
   };
 
-  const checkIn = async (employeeId: string) => {
+  const checkIn = async (employeeId: string, manualTime?: string) => {
     const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const time = manualTime || new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
     const existing = records.find(r => r.employee_id === employeeId && r.date === today);
 
     if (existing) {
       const { data } = await supabase.from('attendance_records')
-        .update({ check_in: now, check_out: null, status: 'present' })
+        .update({ check_in: time, check_out: null, status: 'present' })
         .eq('id', existing.id).select().single();
       if (data) setRecords(prev => prev.map(r => r.id === existing.id ? data : r));
     } else {
       const { data } = await supabase.from('attendance_records')
-        .insert({ employee_id: employeeId, date: today, check_in: now, status: 'present' })
+        .insert({ employee_id: employeeId, date: today, check_in: time, status: 'present' })
         .select().single();
       if (data) setRecords(prev => [...prev, data]);
     }
   };
 
-  const checkOut = async (employeeId: string) => {
+  const checkOut = async (employeeId: string, manualTime?: string) => {
     const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const time = manualTime || new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
     const existing = records.find(r => r.employee_id === employeeId && r.date === today);
     if (existing) {
       const { data } = await supabase.from('attendance_records')
-        .update({ check_out: now })
+        .update({ check_out: time })
         .eq('id', existing.id).select().single();
       if (data) setRecords(prev => prev.map(r => r.id === existing.id ? data : r));
     }

@@ -9,6 +9,10 @@ export function AttendanceTracker() {
   const [newName, setNewName] = useState('');
   const [newPosition, setNewPosition] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [manualTimes, setManualTimes] = useState<Record<string, string>>({});
+
+  const getManualTime = (empId: string) => manualTimes[empId] || '';
+  const setManualTime = (empId: string, val: string) => setManualTimes(prev => ({ ...prev, [empId]: val }));
 
   const handleAdd = () => {
     if (newName.trim() && newPosition.trim()) {
@@ -63,6 +67,7 @@ export function AttendanceTracker() {
           const isPresent = record?.status === 'present';
           const isAbsent = record?.status === 'absent';
           const hasCheckedOut = !!record?.check_out;
+          const timeVal = getManualTime(emp.id);
 
           return (
             <div
@@ -83,10 +88,19 @@ export function AttendanceTracker() {
                 )}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                {(!isPresent || (isPresent && !hasCheckedOut)) && !isAbsent && (
+                  <Input
+                    type="time"
+                    value={timeVal}
+                    onChange={e => setManualTime(emp.id, e.target.value)}
+                    className="w-28 bg-secondary border-border text-xs h-9"
+                    placeholder="HH:MM"
+                  />
+                )}
                 {!isPresent && !isAbsent && (
                   <>
-                    <Button size="sm" onClick={() => checkIn(emp.id)} className="bg-success/20 text-success hover:bg-success/30 border-0">
+                    <Button size="sm" onClick={() => { checkIn(emp.id, timeVal || undefined); setManualTime(emp.id, ''); }} className="bg-success/20 text-success hover:bg-success/30 border-0">
                       <LogIn className="w-4 h-4 mr-1" /> Entrada
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => markAbsent(emp.id)} className="border-destructive/30 text-destructive hover:bg-destructive/10">
@@ -95,7 +109,7 @@ export function AttendanceTracker() {
                   </>
                 )}
                 {isPresent && !hasCheckedOut && (
-                  <Button size="sm" onClick={() => checkOut(emp.id)} className="bg-primary/20 text-primary hover:bg-primary/30 border-0">
+                  <Button size="sm" onClick={() => { checkOut(emp.id, timeVal || undefined); setManualTime(emp.id, ''); }} className="bg-primary/20 text-primary hover:bg-primary/30 border-0">
                     <LogOut className="w-4 h-4 mr-1" /> Salida
                   </Button>
                 )}

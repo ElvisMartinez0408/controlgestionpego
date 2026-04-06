@@ -73,7 +73,16 @@ export function ProductionTracker() {
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Producto / Material</label>
-            <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="Ej: Cajas tipo A" className="bg-secondary border-border" />
+            <select
+              value={productName}
+              onChange={e => setProductName(e.target.value)}
+              className="w-full h-10 rounded-md border border-border bg-secondary px-3 text-sm text-foreground"
+            >
+              <option value="">Seleccionar producto...</option>
+              <option value="Pego Gris">Pego Gris</option>
+              <option value="Pego Blanco">Pego Blanco</option>
+              <option value="Pego Premium">Pego Premium</option>
+            </select>
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Cantidad</label>
