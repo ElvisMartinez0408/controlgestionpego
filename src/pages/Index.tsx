@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Dashboard } from '@/components/Dashboard';
+import logoImg from '@/assets/logo.png';
 import { AttendanceTracker } from '@/components/AttendanceTracker';
 import { AttendanceChart } from '@/components/AttendanceChart';
 import { ProductionTracker } from '@/components/ProductionTracker';
@@ -36,9 +37,7 @@ export default function Index() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg gradient-orange flex items-center justify-center">
-                <Package className="w-5 h-5 text-primary-foreground" />
-              </div>
+              <img src={logoImg} alt="Logo" className="w-10 h-10 rounded-lg object-cover" />
               <div>
                 <h1 className="text-xl font-bold text-foreground">Control de Gestión</h1>
                 <p className="text-xs text-muted-foreground">Asistencia, Producción y Ventas</p>
