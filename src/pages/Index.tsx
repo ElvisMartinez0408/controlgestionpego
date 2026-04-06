@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Dashboard } from '@/components/Dashboard';
+import logoImg from '@/assets/logo.png';
 import { AttendanceTracker } from '@/components/AttendanceTracker';
 import { AttendanceChart } from '@/components/AttendanceChart';
 import { ProductionTracker } from '@/components/ProductionTracker';
