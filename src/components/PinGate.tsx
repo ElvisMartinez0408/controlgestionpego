@@ -2,30 +2,39 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ShieldCheck, Lock } from 'lucide-react';
+import type { UserRole } from '@/contexts/RoleContext';
 
-const ACCESS_PIN = '8799396';
+const PINS: Record<string, UserRole> = {
+  '8799396': 'admin',
+  '3456789': 'viewer',
+};
+
 const AUTH_KEY = 'device_authorized';
+const ROLE_KEY = 'device_role';
 
 export function useDeviceAuth() {
-  const [authorized, setAuthorized] = useState(() => {
-    return localStorage.getItem(AUTH_KEY) === 'true';
-  });
+  const [authorized, setAuthorized] = useState(() => localStorage.getItem(AUTH_KEY) === 'true');
+  const [storedRole, setStoredRole] = useState<UserRole>(() => (localStorage.getItem(ROLE_KEY) as UserRole) || 'viewer');
 
-  const authorize = () => {
+  const authorize = (role: UserRole) => {
     localStorage.setItem(AUTH_KEY, 'true');
+    localStorage.setItem(ROLE_KEY, role);
     setAuthorized(true);
+    setStoredRole(role);
   };
 
   const revoke = () => {
     localStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem(ROLE_KEY);
     setAuthorized(false);
+    setStoredRole('viewer');
   };
 
-  return { authorized, authorize, revoke };
+  return { authorized, storedRole, authorize, revoke };
 }
 
 interface PinGateProps {
-  onAuthorized: () => void;
+  onAuthorized: (role: UserRole) => void;
 }
 
 export function PinGate({ onAuthorized }: PinGateProps) {
@@ -34,8 +43,9 @@ export function PinGate({ onAuthorized }: PinGateProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === ACCESS_PIN) {
-      onAuthorized();
+    const role = PINS[pin];
+    if (role) {
+      onAuthorized(role);
       setError(false);
     } else {
       setError(true);
@@ -60,7 +70,7 @@ export function PinGate({ onAuthorized }: PinGateProps) {
             type="password"
             value={pin}
             onChange={e => { setPin(e.target.value); setError(false); }}
-            placeholder="Clave de acceso"
+            placeholder="••••••••"
             className="bg-secondary border-border text-center text-lg tracking-widest"
             autoFocus
           />
