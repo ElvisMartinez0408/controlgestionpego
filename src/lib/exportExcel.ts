@@ -207,14 +207,14 @@ export async function exportToExcel(
 
   addTitle(wsProd, '📦 REGISTRO DE PRODUCCIÓN', 5);
 
-  const prodHeaders = ['Fecha', 'Producto', 'Cantidad', 'Unidad', 'Notas'];
+  const prodHeaders = ['Fecha', 'Producto', 'Cantidad (sacos)', 'Notas'];
   const prodHeaderRow = wsProd.addRow(prodHeaders);
-  styleHeaderRow(prodHeaderRow, 5);
+    styleHeaderRow(prodHeaderRow, 4);
 
   const sortedProd = [...prodRecords].sort((a, b) => b.date.localeCompare(a.date));
   sortedProd.forEach((rec, i) => {
-    const row = wsProd.addRow([rec.date, rec.product_name, rec.quantity, rec.unit, rec.notes || '-']);
-    for (let c = 1; c <= 5; c++) {
+    const row = wsProd.addRow([rec.date, rec.product_name, rec.quantity, rec.notes || '-']);
+    for (let c = 1; c <= 4; c++) {
       styleDataCell(row.getCell(c), i % 2 === 0);
     }
     row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
@@ -277,7 +277,7 @@ export async function exportToExcel(
 
   addTitle(wsSales, '💰 REGISTRO DE VENTAS', 5);
 
-  const salesHeaders = ['Fecha', 'Producto', 'Cantidad', 'Cliente', 'Observaciones'];
+  const salesHeaders = ['Fecha', 'Producto', 'Cantidad', 'Cliente', 'Nº Guía'];
   const salesHeaderRow = wsSales.addRow(salesHeaders);
   styleHeaderRow(salesHeaderRow, 5);
 
