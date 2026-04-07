@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useAttendance } from '@/hooks/useAttendance';
+import { useRole } from '@/contexts/RoleContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LogIn, LogOut, UserX, UserPlus, Trash2, RotateCcw } from 'lucide-react';
 
 export function AttendanceTracker() {
   const { employees, loading, addEmployee, removeEmployee, checkIn, checkOut, markAbsent, resetRecord, getTodayRecord } = useAttendance();
+  const { isAdmin } = useRole();
   const [newName, setNewName] = useState('');
   const [newPosition, setNewPosition] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -23,9 +25,7 @@ export function AttendanceTracker() {
     }
   };
 
-  const today = new Date().toLocaleDateString('es-MX', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-  });
+  const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   if (loading) {
     return <div className="flex items-center justify-center p-12 text-muted-foreground">Cargando...</div>;
@@ -38,16 +38,14 @@ export function AttendanceTracker() {
           <h2 className="text-2xl font-bold text-foreground">Asistencia del Día</h2>
           <p className="text-muted-foreground capitalize">{today}</p>
         </div>
-        <Button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="gradient-orange text-primary-foreground hover:opacity-90"
-        >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Agregar Empleado
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setShowAddForm(!showAddForm)} className="gradient-orange text-primary-foreground hover:opacity-90">
+            <UserPlus className="w-4 h-4 mr-2" /> Agregar Empleado
+          </Button>
+        )}
       </div>
 
-      {showAddForm && (
+      {isAdmin && showAddForm && (
         <div className="glass-card p-4 flex gap-3 items-end">
           <div className="flex-1">
             <label className="text-sm text-muted-foreground mb-1 block">Nombre</label>
@@ -88,46 +86,42 @@ export function AttendanceTracker() {
                 )}
               </div>
 
-              <div className="flex gap-2 items-center">
-                {(!isPresent || (isPresent && !hasCheckedOut)) && !isAbsent && (
-                  <Input
-                    type="time"
-                    value={timeVal}
-                    onChange={e => setManualTime(emp.id, e.target.value)}
-                    className="w-28 bg-secondary border-border text-xs h-9"
-                    placeholder="HH:MM"
-                  />
-                )}
-                {!isPresent && !isAbsent && (
-                  <>
-                    <Button size="sm" onClick={() => { checkIn(emp.id, timeVal || undefined); setManualTime(emp.id, ''); }} className="bg-success/20 text-success hover:bg-success/30 border-0">
-                      <LogIn className="w-4 h-4 mr-1" /> Entrada
+              {isAdmin && (
+                <div className="flex gap-2 items-center">
+                  {(!isPresent || (isPresent && !hasCheckedOut)) && !isAbsent && (
+                    <Input
+                      type="time"
+                      value={timeVal}
+                      onChange={e => setManualTime(emp.id, e.target.value)}
+                      className="w-28 bg-secondary border-border text-xs h-9"
+                      placeholder="HH:MM"
+                    />
+                  )}
+                  {!isPresent && !isAbsent && (
+                    <>
+                      <Button size="sm" onClick={() => { checkIn(emp.id, timeVal || undefined); setManualTime(emp.id, ''); }} className="bg-success/20 text-success hover:bg-success/30 border-0">
+                        <LogIn className="w-4 h-4 mr-1" /> Entrada
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => markAbsent(emp.id)} className="border-destructive/30 text-destructive hover:bg-destructive/10">
+                        <UserX className="w-4 h-4 mr-1" /> Falta
+                      </Button>
+                    </>
+                  )}
+                  {isPresent && !hasCheckedOut && (
+                    <Button size="sm" onClick={() => { checkOut(emp.id, timeVal || undefined); setManualTime(emp.id, ''); }} className="bg-primary/20 text-primary hover:bg-primary/30 border-0">
+                      <LogOut className="w-4 h-4 mr-1" /> Salida
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => markAbsent(emp.id)} className="border-destructive/30 text-destructive hover:bg-destructive/10">
-                      <UserX className="w-4 h-4 mr-1" /> Falta
+                  )}
+                  {(isPresent || isAbsent) && (
+                    <Button size="sm" variant="ghost" onClick={() => resetRecord(emp.id)} className="text-muted-foreground hover:text-foreground" title="Resetear">
+                      <RotateCcw className="w-3.5 h-3.5" />
                     </Button>
-                  </>
-                )}
-                {isPresent && !hasCheckedOut && (
-                  <Button size="sm" onClick={() => { checkOut(emp.id, timeVal || undefined); setManualTime(emp.id, ''); }} className="bg-primary/20 text-primary hover:bg-primary/30 border-0">
-                    <LogOut className="w-4 h-4 mr-1" /> Salida
+                  )}
+                  <Button size="sm" variant="ghost" onClick={() => removeEmployee(emp.id)} className="text-muted-foreground hover:text-destructive">
+                    <Trash2 className="w-3.5 h-3.5" />
                   </Button>
-                )}
-                {(isPresent || isAbsent) && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => resetRecord(emp.id)}
-                    className="text-muted-foreground hover:text-foreground"
-                    title="Resetear"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-                <Button size="sm" variant="ghost" onClick={() => removeEmployee(emp.id)} className="text-muted-foreground hover:text-destructive">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
+                </div>
+              )}
             </div>
           );
         })}

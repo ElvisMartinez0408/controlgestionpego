@@ -7,11 +7,16 @@ import { ProductionTracker } from '@/components/ProductionTracker';
 import { ProductionChart } from '@/components/ProductionChart';
 import { SalesTracker } from '@/components/SalesTracker';
 import { SalesChart } from '@/components/SalesChart';
+import { GuideRegistry } from '@/components/GuideRegistry';
 import { PinGate, useDeviceAuth } from '@/components/PinGate';
 import { ExportButton } from '@/components/ExportButton';
-import { LayoutDashboard, Users, BarChart3, Package, TrendingUp, DollarSign, LineChart } from 'lucide-react';
+import { GYCReportButton } from '@/components/GYCReportButton';
+import { RoleProvider, useRole } from '@/contexts/RoleContext';
+import { LayoutDashboard, Users, BarChart3, Package, TrendingUp, DollarSign, LineChart, FileText, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { UserRole } from '@/contexts/RoleContext';
 
-type Tab = 'dashboard' | 'attendance' | 'attendance-chart' | 'production' | 'production-chart' | 'sales' | 'sales-chart';
+type Tab = 'dashboard' | 'attendance' | 'attendance-chart' | 'production' | 'production-chart' | 'sales' | 'sales-chart' | 'guides';
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'dashboard', label: 'Tablero', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -21,14 +26,26 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'production-chart', label: 'Gráfica Producción', icon: <TrendingUp className="w-4 h-4" /> },
   { id: 'sales', label: 'Ventas', icon: <DollarSign className="w-4 h-4" /> },
   { id: 'sales-chart', label: 'Gráfica Ventas', icon: <LineChart className="w-4 h-4" /> },
+  { id: 'guides', label: 'Guías', icon: <FileText className="w-4 h-4" /> },
 ];
 
-export default function Index() {
+function IndexContent() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const { authorized, authorize } = useDeviceAuth();
+  const { authorized, storedRole, authorize, revoke } = useDeviceAuth();
+  const { setRole, isAdmin } = useRole();
+
+  const handleAuthorize = (role: UserRole) => {
+    authorize(role);
+    setRole(role);
+  };
+
+  // Sync stored role on mount
+  useState(() => {
+    if (authorized) setRole(storedRole);
+  });
 
   if (!authorized) {
-    return <PinGate onAuthorized={authorize} />;
+    return <PinGate onAuthorized={handleAuthorize} />;
   }
 
   return (
@@ -40,10 +57,18 @@ export default function Index() {
               <img src={logoImg} alt="Logo" className="w-10 h-10 rounded-lg object-cover" />
               <div>
                 <h1 className="text-xl font-bold text-foreground">Control de Gestión</h1>
-                <p className="text-xs text-muted-foreground">Asistencia, Producción y Ventas</p>
+                <p className="text-xs text-muted-foreground">
+                  {isAdmin ? '🔑 Administrador' : '👁 Solo Lectura'}
+                </p>
               </div>
             </div>
-            <ExportButton />
+            <div className="flex items-center gap-2">
+              {isAdmin && <GYCReportButton />}
+              <ExportButton />
+              <Button size="sm" variant="ghost" onClick={revoke} className="text-muted-foreground hover:text-destructive" title="Cerrar sesión">
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -77,7 +102,16 @@ export default function Index() {
         {activeTab === 'production-chart' && <ProductionChart />}
         {activeTab === 'sales' && <SalesTracker />}
         {activeTab === 'sales-chart' && <SalesChart />}
+        {activeTab === 'guides' && <GuideRegistry />}
       </main>
     </div>
+  );
+}
+
+export default function Index() {
+  return (
+    <RoleProvider>
+      <IndexContent />
+    </RoleProvider>
   );
 }

@@ -109,7 +109,7 @@ export function useAttendance() {
 
   const getMonthlyStats = (month: number, year: number) => {
     const monthRecords = records.filter(r => {
-      const d = new Date(r.date);
+      const d = new Date(r.date + 'T12:00:00');
       return d.getMonth() === month && d.getFullYear() === year;
     });
 
@@ -131,6 +131,29 @@ export function useAttendance() {
     return dailyStats;
   };
 
+  const getWeeklyStats = (month: number, year: number) => {
+    const monthRecords = records.filter(r => {
+      const d = new Date(r.date + 'T12:00:00');
+      return d.getMonth() === month && d.getFullYear() === year;
+    });
+    const weeks: { week: string; presentes: number; ausentes: number }[] = [];
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    for (let w = 0; w < Math.ceil(daysInMonth / 7); w++) {
+      const start = w * 7 + 1;
+      const end = Math.min(start + 6, daysInMonth);
+      const weekRecords = monthRecords.filter(r => {
+        const day = new Date(r.date + 'T12:00:00').getDate();
+        return day >= start && day <= end;
+      });
+      weeks.push({
+        week: `${start}-${end}`,
+        presentes: weekRecords.filter(r => r.status === 'present').length,
+        ausentes: weekRecords.filter(r => r.status === 'absent').length,
+      });
+    }
+    return weeks;
+  };
+
   return {
     employees,
     records,
@@ -143,5 +166,6 @@ export function useAttendance() {
     resetRecord,
     getTodayRecord,
     getMonthlyStats,
+    getWeeklyStats,
   };
 }
