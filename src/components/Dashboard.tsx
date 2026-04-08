@@ -39,7 +39,7 @@ export function Dashboard() {
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const dayProd = prodRecords.filter(r => r.date === dateStr).reduce((s, r) => s + r.quantity, 0);
     const daySales = saleRecords.filter(r => r.date === dateStr).reduce((s, r) => s + r.quantity, 0);
     last7Days.push({
