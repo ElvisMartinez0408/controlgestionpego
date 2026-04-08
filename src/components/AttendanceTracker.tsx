@@ -20,8 +20,9 @@ export function AttendanceTracker() {
     return '';
   };
 
-  const getManualTime = (empId: string) => manualTimes[empId] ?? getDefaultTime(empId);
+  const getManualTime = (empId: string) => empId in manualTimes ? manualTimes[empId] : getDefaultTime(empId);
   const setManualTime = (empId: string, val: string) => setManualTimes(prev => ({ ...prev, [empId]: val }));
+  const clearManualTime = (empId: string) => setManualTimes(prev => { const n = { ...prev }; delete n[empId]; return n; });
 
   const handleAdd = () => {
     if (newName.trim() && newPosition.trim()) {
