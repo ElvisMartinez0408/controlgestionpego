@@ -20,8 +20,9 @@ export function AttendanceTracker() {
     return '';
   };
 
-  const getManualTime = (empId: string) => manualTimes[empId] ?? getDefaultTime(empId);
+  const getManualTime = (empId: string) => empId in manualTimes ? manualTimes[empId] : getDefaultTime(empId);
   const setManualTime = (empId: string, val: string) => setManualTimes(prev => ({ ...prev, [empId]: val }));
+  const clearManualTime = (empId: string) => setManualTimes(prev => { const n = { ...prev }; delete n[empId]; return n; });
 
   const handleAdd = () => {
     if (newName.trim() && newPosition.trim()) {
@@ -106,7 +107,7 @@ export function AttendanceTracker() {
                   )}
                   {!isPresent && !isAbsent && (
                     <>
-                      <Button size="sm" onClick={() => { checkIn(emp.id, timeVal || undefined); setManualTime(emp.id, ''); }} className="bg-success/20 text-success hover:bg-success/30 border-0">
+                      <Button size="sm" onClick={() => { checkIn(emp.id, timeVal || undefined); clearManualTime(emp.id); }} className="bg-success/20 text-success hover:bg-success/30 border-0">
                         <LogIn className="w-4 h-4 mr-1" /> Entrada
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => markAbsent(emp.id)} className="border-destructive/30 text-destructive hover:bg-destructive/10">
@@ -115,7 +116,7 @@ export function AttendanceTracker() {
                     </>
                   )}
                   {isPresent && !hasCheckedOut && (
-                    <Button size="sm" onClick={() => { checkOut(emp.id, timeVal || undefined); setManualTime(emp.id, ''); }} className="bg-primary/20 text-primary hover:bg-primary/30 border-0">
+                    <Button size="sm" onClick={() => { checkOut(emp.id, timeVal || undefined); clearManualTime(emp.id); }} className="bg-primary/20 text-primary hover:bg-primary/30 border-0">
                       <LogOut className="w-4 h-4 mr-1" /> Salida
                     </Button>
                   )}
