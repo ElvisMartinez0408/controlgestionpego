@@ -23,7 +23,8 @@ export function useSales() {
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
   const addRecord = async (productName: string, quantity: number, client?: string, notes?: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const { data } = await supabase.from('sale_records')
       .insert({ product_name: productName, quantity, date: today, client: client || null, notes: notes || null })
       .select().single();
