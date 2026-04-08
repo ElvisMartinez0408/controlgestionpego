@@ -50,9 +50,9 @@ export function Dashboard() {
   }
 
   // Monthly totals
-  const monthProdRecords = prodRecords.filter(r => { const d = new Date(r.date); return d.getMonth() === month && d.getFullYear() === year; });
+  const monthProdRecords = prodRecords.filter(r => { const d = new Date(r.date + 'T12:00:00'); return d.getMonth() === month && d.getFullYear() === year; });
   const totalProdMonth = monthProdRecords.reduce((s, r) => s + r.quantity, 0);
-  const monthSaleRecords = saleRecords.filter(r => { const d = new Date(r.date); return d.getMonth() === month && d.getFullYear() === year; });
+  const monthSaleRecords = saleRecords.filter(r => { const d = new Date(r.date + 'T12:00:00'); return d.getMonth() === month && d.getFullYear() === year; });
   const totalSalesMonth = monthSaleRecords.reduce((s, r) => s + r.quantity, 0);
 
   return (
