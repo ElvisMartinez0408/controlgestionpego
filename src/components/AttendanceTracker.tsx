@@ -13,7 +13,14 @@ export function AttendanceTracker() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [manualTimes, setManualTimes] = useState<Record<string, string>>({});
 
-  const getManualTime = (empId: string) => manualTimes[empId] || '';
+  const getDefaultTime = (empId: string) => {
+    const record = getTodayRecord(empId);
+    if (!record || (!record.check_in && record.status !== 'absent')) return '07:30';
+    if (record.check_in && !record.check_out) return '16:30';
+    return '';
+  };
+
+  const getManualTime = (empId: string) => manualTimes[empId] ?? getDefaultTime(empId);
   const setManualTime = (empId: string, val: string) => setManualTimes(prev => ({ ...prev, [empId]: val }));
 
   const handleAdd = () => {
