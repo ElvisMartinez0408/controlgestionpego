@@ -15,7 +15,8 @@ export function Dashboard() {
     return <div className="flex items-center justify-center p-12 text-muted-foreground">Cargando tablero...</div>;
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const todayObj = new Date();
+  const today = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
   const now = new Date();
   const month = now.getMonth();
   const year = now.getFullYear();
@@ -38,7 +39,7 @@ export function Dashboard() {
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const dayProd = prodRecords.filter(r => r.date === dateStr).reduce((s, r) => s + r.quantity, 0);
     const daySales = saleRecords.filter(r => r.date === dateStr).reduce((s, r) => s + r.quantity, 0);
     last7Days.push({
@@ -49,9 +50,9 @@ export function Dashboard() {
   }
 
   // Monthly totals
-  const monthProdRecords = prodRecords.filter(r => { const d = new Date(r.date); return d.getMonth() === month && d.getFullYear() === year; });
+  const monthProdRecords = prodRecords.filter(r => { const d = new Date(r.date + 'T12:00:00'); return d.getMonth() === month && d.getFullYear() === year; });
   const totalProdMonth = monthProdRecords.reduce((s, r) => s + r.quantity, 0);
-  const monthSaleRecords = saleRecords.filter(r => { const d = new Date(r.date); return d.getMonth() === month && d.getFullYear() === year; });
+  const monthSaleRecords = saleRecords.filter(r => { const d = new Date(r.date + 'T12:00:00'); return d.getMonth() === month && d.getFullYear() === year; });
   const totalSalesMonth = monthSaleRecords.reduce((s, r) => s + r.quantity, 0);
 
   return (

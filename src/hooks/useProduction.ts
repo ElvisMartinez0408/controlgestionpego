@@ -39,8 +39,8 @@ export function useProduction() {
   };
 
   const getFilteredRecords = (from: Date, to: Date) => {
-    const fromStr = from.toISOString().split('T')[0];
-    const toStr = to.toISOString().split('T')[0];
+    const fromStr = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}-${String(from.getDate()).padStart(2, '0')}`;
+    const toStr = `${to.getFullYear()}-${String(to.getMonth() + 1).padStart(2, '0')}-${String(to.getDate()).padStart(2, '0')}`;
     return records.filter(r => r.date >= fromStr && r.date <= toStr);
   };
 
