@@ -46,8 +46,13 @@ export function useAttendance() {
     setRecords(prev => prev.filter(r => r.employee_id !== id));
   };
 
+  const getLocalToday = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   const checkIn = async (employeeId: string, manualTime?: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalToday();
     const time = manualTime || new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
     const existing = records.find(r => r.employee_id === employeeId && r.date === today);
 
@@ -65,7 +70,7 @@ export function useAttendance() {
   };
 
   const checkOut = async (employeeId: string, manualTime?: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalToday();
     const time = manualTime || new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
     const existing = records.find(r => r.employee_id === employeeId && r.date === today);
     if (existing) {
@@ -77,7 +82,7 @@ export function useAttendance() {
   };
 
   const markAbsent = async (employeeId: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalToday();
     const existing = records.find(r => r.employee_id === employeeId && r.date === today);
 
     if (existing) {
@@ -94,7 +99,7 @@ export function useAttendance() {
   };
 
   const resetRecord = async (employeeId: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalToday();
     const existing = records.find(r => r.employee_id === employeeId && r.date === today);
     if (existing) {
       await supabase.from('attendance_records').delete().eq('id', existing.id);
@@ -103,7 +108,7 @@ export function useAttendance() {
   };
 
   const getTodayRecord = (employeeId: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalToday();
     return records.find(r => r.employee_id === employeeId && r.date === today);
   };
 
