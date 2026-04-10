@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useAttendance } from '@/hooks/useAttendance';
 import { useProduction } from '@/hooks/useProduction';
 import { useSales } from '@/hooks/useSales';
+import { useRawMaterials } from '@/hooks/useRawMaterials';
 import { useRole } from '@/contexts/RoleContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -30,6 +31,7 @@ export function GYCReportButton() {
   const { employees, records: attRecords } = useAttendance();
   const { records: prodRecords } = useProduction();
   const { records: saleRecords } = useSales();
+  const { records: rawMatRecords } = useRawMaterials();
 
   if (!isAdmin) return null;
 
