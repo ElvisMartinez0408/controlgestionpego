@@ -103,6 +103,42 @@ export type Database = {
         }
         Relationships: []
       }
+      raw_materials: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          kilos_per_sack: number | null
+          material_name: string
+          notes: string | null
+          quantity: number
+          sack_count: number | null
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          kilos_per_sack?: number | null
+          material_name: string
+          notes?: string | null
+          quantity: number
+          sack_count?: number | null
+          unit?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          kilos_per_sack?: number | null
+          material_name?: string
+          notes?: string | null
+          quantity?: number
+          sack_count?: number | null
+          unit?: string
+        }
+        Relationships: []
+      }
       sale_records: {
         Row: {
           client: string | null
