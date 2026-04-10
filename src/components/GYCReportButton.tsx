@@ -607,7 +607,113 @@ export function GYCReportButton() {
         y += 6.5;
       });
 
-      // ===== FOOTER on all pages =====
+      // ===== MATERIAS PRIMAS SECTION =====
+      const monthRaw = filterMonth(rawMatRecords);
+      if (monthRaw.length > 0) {
+        y = ensureSpace(y, 20);
+        y = drawSectionTitle('MATERIAS PRIMAS', y);
+
+        // Summary by material
+        const rawByMat: Record<string, { qty: number; unit: string }> = {};
+        monthRaw.forEach(r => {
+          const key = r.material_name;
+          if (!rawByMat[key]) rawByMat[key] = { qty: 0, unit: r.unit };
+          rawByMat[key].qty += r.quantity;
+        });
+        const rawEntries = Object.entries(rawByMat).sort((a, b) => b[1].qty - a[1].qty);
+
+        // Bar chart
+        if (rawEntries.length > 0) {
+          y = ensureSpace(y, 52);
+          drawCardBg(marginL, y, contentW, 48);
+
+          setTextC(C.gray);
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'bold');
+          doc.text('ENTRADAS POR MATERIAL', marginL + 6, y + 8);
+
+          const rChartX = marginL + 10;
+          const rChartY = y + 14;
+          const rChartW = contentW - 20;
+          const rChartH = 28;
+          const rMaxVal = Math.max(...rawEntries.map(e => e[1].qty), 1);
+          const rBarW = Math.min(22, (rChartW - 10) / rawEntries.length - 4);
+
+          for (let g = 0; g <= 4; g++) {
+            const gy = rChartY + rChartH - (g / 4) * rChartH;
+            setDraw(C.grayDark);
+            doc.setLineWidth(0.1);
+            doc.line(rChartX, gy, rChartX + rChartW, gy);
+            setTextC(C.grayDark);
+            doc.setFontSize(5);
+            doc.setFont('helvetica', 'normal');
+            doc.text(Math.round((g / 4) * rMaxVal).toString(), rChartX - 2, gy + 1, { align: 'right' });
+          }
+
+          rawEntries.forEach((entry, i) => {
+            const bx = rChartX + 10 + i * ((rChartW - 10) / rawEntries.length) + ((rChartW - 10) / rawEntries.length - rBarW) / 2;
+            const bh = (entry[1].qty / rMaxVal) * rChartH;
+            const by = rChartY + rChartH - bh;
+
+            setFill(C.orange);
+            doc.roundedRect(bx, by, rBarW, bh, 1, 1, 'F');
+            setFill(C.orangeLight);
+            doc.roundedRect(bx, by, rBarW, bh * 0.4, 1, 1, 'F');
+
+            setTextC(C.white);
+            doc.setFontSize(5.5);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${entry[1].qty.toLocaleString()} ${entry[1].unit.substring(0, 3)}`, bx + rBarW / 2, by - 2, { align: 'center' });
+
+            setTextC(C.gray);
+            doc.setFontSize(4.5);
+            doc.setFont('helvetica', 'normal');
+            const lbl = entry[0].length > 14 ? entry[0].substring(0, 14) + '…' : entry[0];
+            doc.text(lbl, bx + rBarW / 2, rChartY + rChartH + 5, { align: 'center' });
+          });
+
+          y += 54;
+        }
+
+        // Detail table
+        const sortedRaw = [...monthRaw].sort((a, b) => b.date.localeCompare(a.date));
+        y = ensureSpace(y, 20);
+        drawCardBg(marginL, y, contentW, 8);
+        setFill(C.orange);
+        doc.rect(marginL, y, contentW, 7, 'F');
+        setTextC(C.white);
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'bold');
+        const rawCols = [marginL + 3, marginL + 28, marginL + 80, marginL + 120];
+        doc.text('FECHA', rawCols[0], y + 5);
+        doc.text('MATERIAL', rawCols[1], y + 5);
+        doc.text('CANTIDAD', rawCols[2], y + 5);
+        doc.text('UNIDAD', rawCols[3], y + 5);
+        y += 9;
+
+        sortedRaw.forEach((rec, i) => {
+          y = ensureSpace(y, 7);
+          if (i % 2 === 0) {
+            setFill(C.bgLight);
+            doc.rect(marginL, y - 3.5, contentW, 6.5, 'F');
+          }
+          setTextC(C.grayLight);
+          doc.setFontSize(6);
+          doc.setFont('helvetica', 'normal');
+          doc.text(rec.date, rawCols[0], y);
+          doc.text(rec.material_name, rawCols[1], y);
+          setTextC(C.orangeLight);
+          doc.setFont('helvetica', 'bold');
+          doc.text(rec.quantity.toLocaleString(), rawCols[2], y);
+          setTextC(C.grayLight);
+          doc.setFont('helvetica', 'normal');
+          doc.text(rec.unit, rawCols[3], y);
+          y += 6.5;
+        });
+        y += 6;
+      }
+
+
       const pages = doc.getNumberOfPages();
       for (let i = 1; i <= pages; i++) {
         doc.setPage(i);
