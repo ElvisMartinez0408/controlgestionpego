@@ -8,15 +8,16 @@ import { ProductionChart } from '@/components/ProductionChart';
 import { SalesTracker } from '@/components/SalesTracker';
 import { SalesChart } from '@/components/SalesChart';
 import { GuideRegistry } from '@/components/GuideRegistry';
+import { RawMaterialsTracker } from '@/components/RawMaterialsTracker';
 import { PinGate, useDeviceAuth } from '@/components/PinGate';
 import { ExportButton } from '@/components/ExportButton';
 import { GYCReportButton } from '@/components/GYCReportButton';
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
-import { LayoutDashboard, Users, BarChart3, Package, TrendingUp, DollarSign, LineChart, FileText, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, Package, TrendingUp, DollarSign, LineChart, FileText, Warehouse, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { UserRole } from '@/contexts/RoleContext';
 
-type Tab = 'dashboard' | 'attendance' | 'attendance-chart' | 'production' | 'production-chart' | 'sales' | 'sales-chart' | 'guides';
+type Tab = 'dashboard' | 'attendance' | 'attendance-chart' | 'production' | 'production-chart' | 'sales' | 'sales-chart' | 'raw-materials' | 'guides';
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'dashboard', label: 'Tablero', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -26,6 +27,7 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'production-chart', label: 'Gráfica Producción', icon: <TrendingUp className="w-4 h-4" /> },
   { id: 'sales', label: 'Ventas', icon: <DollarSign className="w-4 h-4" /> },
   { id: 'sales-chart', label: 'Gráfica Ventas', icon: <LineChart className="w-4 h-4" /> },
+  { id: 'raw-materials', label: 'Materias Primas', icon: <Warehouse className="w-4 h-4" /> },
   { id: 'guides', label: 'Guías', icon: <FileText className="w-4 h-4" /> },
 ];
 
@@ -102,6 +104,7 @@ function IndexContent() {
         {activeTab === 'production-chart' && <ProductionChart />}
         {activeTab === 'sales' && <SalesTracker />}
         {activeTab === 'sales-chart' && <SalesChart />}
+        {activeTab === 'raw-materials' && <RawMaterialsTracker />}
         {activeTab === 'guides' && <GuideRegistry />}
       </main>
     </div>
