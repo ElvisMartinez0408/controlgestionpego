@@ -13,7 +13,8 @@ import { PinGate, useDeviceAuth } from '@/components/PinGate';
 import { ExportButton } from '@/components/ExportButton';
 import { GYCReportButton } from '@/components/GYCReportButton';
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
-import { LayoutDashboard, Users, BarChart3, Package, TrendingUp, DollarSign, LineChart, FileText, Warehouse, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, Package, TrendingUp, DollarSign, LineChart, FileText, Warehouse, LogOut, Sun, Moon } from 'lucide-react';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import type { UserRole } from '@/contexts/RoleContext';
 
@@ -35,6 +36,7 @@ function IndexContent() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const { authorized, storedRole, authorize, revoke } = useDeviceAuth();
   const { setRole, isAdmin } = useRole();
+  const { theme, toggleTheme } = useTheme();
 
   const handleAuthorize = (role: UserRole) => {
     authorize(role);
@@ -67,6 +69,9 @@ function IndexContent() {
             <div className="flex items-center gap-2">
               {isAdmin && <GYCReportButton />}
               <ExportButton />
+              <Button size="sm" variant="ghost" onClick={toggleTheme} className="text-muted-foreground hover:text-foreground" title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
+                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
               <Button size="sm" variant="ghost" onClick={revoke} className="text-muted-foreground hover:text-destructive" title="Cerrar sesión">
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -113,8 +118,10 @@ function IndexContent() {
 
 export default function Index() {
   return (
-    <RoleProvider>
-      <IndexContent />
-    </RoleProvider>
+    <ThemeProvider>
+      <RoleProvider>
+        <IndexContent />
+      </RoleProvider>
+    </ThemeProvider>
   );
 }
