@@ -3,6 +3,7 @@ import { useRawMaterials, MATERIALS, getUnitForMaterial, isSackMaterial, type Ma
 import { useRole } from '@/contexts/RoleContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MaterialStatusCards } from '@/components/MaterialStatusCards';
 import { Warehouse, Plus, Trash2, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -238,6 +239,9 @@ export function RawMaterialsTracker() {
           </div>
         )}
       </div>
+
+      {/* Material Status Cards */}
+      <MaterialStatusCards records={records} />
     </div>
   );
 }
