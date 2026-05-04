@@ -24,6 +24,10 @@ const MATERIALS = [
 
 export type MaterialName = typeof MATERIALS[number];
 
+/** Bag types tracked separately as packaging supply */
+export const BAG_TYPES = ['Bolsa Gris', 'Bolsa Blanco', 'Bolsa Premium'] as const;
+export type BagType = typeof BAG_TYPES[number];
+
 /** Materials measured in Toneladas */
 const TON_MATERIALS: MaterialName[] = ['Cemento Gris', 'Arena'];
 /** Materials measured in Kilos (direct) */
