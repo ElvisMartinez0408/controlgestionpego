@@ -52,6 +52,36 @@ export type Database = {
           },
         ]
       }
+      custom_supplies: {
+        Row: {
+          alert_threshold: number
+          created_at: string
+          current_quantity: number
+          id: string
+          name: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          alert_threshold?: number
+          created_at?: string
+          current_quantity?: number
+          id?: string
+          name: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          alert_threshold?: number
+          created_at?: string
+          current_quantity?: number
+          id?: string
+          name?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       employees: {
         Row: {
           created_at: string
@@ -70,6 +100,27 @@ export type Database = {
           id?: string
           name?: string
           position?: string
+        }
+        Relationships: []
+      }
+      finished_product_stock: {
+        Row: {
+          id: string
+          product_name: string
+          stock: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          product_name: string
+          stock?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          product_name?: string
+          stock?: number
+          updated_at?: string
         }
         Relationships: []
       }
