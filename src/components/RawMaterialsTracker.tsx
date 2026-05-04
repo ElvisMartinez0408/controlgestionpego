@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { useRawMaterials, MATERIALS, getUnitForMaterial, isSackMaterial, type MaterialName } from '@/hooks/useRawMaterials';
+import { useRawMaterials, MATERIALS, getUnitForMaterial, isSackMaterial, type MaterialName, BAG_TYPES } from '@/hooks/useRawMaterials';
 import { useRole } from '@/contexts/RoleContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MaterialStatusCards } from '@/components/MaterialStatusCards';
+import { FinishedStockCards } from '@/components/FinishedStockCards';
+import { BagEntryForm } from '@/components/BagEntryForm';
+import { CustomSuppliesSection } from '@/components/CustomSuppliesSection';
 import { Warehouse, Plus, Trash2, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -20,6 +23,8 @@ export function RawMaterialsTracker() {
   const [sackCount, setSackCount] = useState('');
   const [kilosPerSack, setKilosPerSack] = useState('');
   const [notes, setNotes] = useState('');
+  // Display unit toggle for Cementos/Arena: 'kg' shows raw kilos, 'tn' converts to toneladas
+  const [weightDisplay, setWeightDisplay] = useState<'kg' | 'tn'>('tn');
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const displayDate = format(selectedDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
@@ -68,6 +73,19 @@ export function RawMaterialsTracker() {
   // Filter records to show all (historical table)
   const sortedRecords = [...records].sort((a, b) => b.date.localeCompare(a.date));
 
+  // Convert quantity for display based on toggle. Internally always stored in original unit.
+  const TON_NAMES = ['Cemento Gris', 'Arena'];
+  const formatRow = (rec: typeof records[number]) => {
+    if (TON_NAMES.includes(rec.material_name)) {
+      // Stored as Toneladas. Convert to Kilos if needed.
+      if (weightDisplay === 'kg') {
+        return { qty: rec.quantity * 1000, unit: 'Kilos' };
+      }
+      return { qty: rec.quantity, unit: 'Toneladas' };
+    }
+    return { qty: rec.quantity, unit: rec.unit };
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center p-12 text-muted-foreground">Cargando...</div>;
   }
@@ -78,6 +96,9 @@ export function RawMaterialsTracker() {
         <h2 className="text-2xl font-bold text-foreground">Registro de Materias Primas</h2>
         <p className="text-muted-foreground capitalize">{displayDate}</p>
       </div>
+
+      {/* Finished product stock cards (manual edit) */}
+      <FinishedStockCards />
 
       {isAdmin && (
         <div className="glass-card p-4 space-y-3">
@@ -201,9 +222,24 @@ export function RawMaterialsTracker() {
         </div>
       )}
 
+      {/* Bag entry form */}
+      <BagEntryForm />
+
       {/* Historical Table */}
       <div className="glass-card p-4">
-        <h3 className="font-semibold text-foreground mb-3">Historial de Entradas</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h3 className="font-semibold text-foreground">Historial de Entradas</h3>
+          <div className="inline-flex items-center rounded-lg border border-border bg-secondary p-0.5 text-xs">
+            <button
+              onClick={() => setWeightDisplay('kg')}
+              className={cn('px-3 py-1 rounded-md font-medium transition-all', weightDisplay === 'kg' ? 'gradient-orange text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
+            >Kilogramos</button>
+            <button
+              onClick={() => setWeightDisplay('tn')}
+              className={cn('px-3 py-1 rounded-md font-medium transition-all', weightDisplay === 'tn' ? 'gradient-orange text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
+            >Toneladas</button>
+          </div>
+        </div>
         {sortedRecords.length === 0 ? (
           <p className="text-muted-foreground text-sm">No hay registros de materias primas.</p>
         ) : (
@@ -219,12 +255,14 @@ export function RawMaterialsTracker() {
                 </tr>
               </thead>
               <tbody>
-                {sortedRecords.map((record, i) => (
+                {sortedRecords.map((record, i) => {
+                  const { qty, unit: dispUnit } = formatRow(record);
+                  return (
                   <tr key={record.id} className={cn("border-b border-border/50", i % 2 === 0 && "bg-secondary/30")}>
                     <td className="py-2 px-3 text-foreground">{record.date}</td>
                     <td className="py-2 px-3 text-foreground">{record.material_name}</td>
-                    <td className="py-2 px-3 text-right font-bold text-primary">{record.quantity.toLocaleString()}</td>
-                    <td className="py-2 px-3 text-muted-foreground">{record.unit}</td>
+                    <td className="py-2 px-3 text-right font-bold text-primary">{qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-muted-foreground">{dispUnit}</td>
                     {isAdmin && (
                       <td className="py-2 px-3 text-center">
                         <Button size="sm" variant="ghost" onClick={() => removeRecord(record.id)} className="text-muted-foreground hover:text-destructive">
@@ -233,12 +271,16 @@ export function RawMaterialsTracker() {
                       </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {/* Custom supplies with alert thresholds */}
+      <CustomSuppliesSection />
 
       {/* Material Status Cards */}
       <MaterialStatusCards records={records} />
