@@ -1,6 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+/** Convert any incoming entry to canonical base unit (Kilos for weights, Unidades for bags). */
+function toBaseUnit(materialName: string, quantity: number, unit: string): { qty: number; unit: string } {
+  const u = unit.toLowerCase();
+  if (u.startsWith('tonelada') || u === 'tn' || u === 't') return { qty: quantity * 1000, unit: 'Kilos' };
+  if (u === 'unidades' || u === 'unidad' || u === 'und') return { qty: quantity, unit: 'Unidades' };
+  return { qty: quantity, unit: 'Kilos' };
+}
+
+async function adjustMaterialStock(materialName: string, delta: number, unit: string) {
+  const { data: current } = await (supabase as any)
+    .from('material_stock')
+    .select('*')
+    .eq('material_name', materialName)
+    .maybeSingle();
+  if (current) {
+    await (supabase as any)
+      .from('material_stock')
+      .update({ stock: Number(current.stock) + delta, updated_at: new Date().toISOString() })
+      .eq('id', current.id);
+  } else {
+    await (supabase as any)
+      .from('material_stock')
+      .insert({ material_name: materialName, stock: delta, unit });
+  }
+}
+
 export interface RawMaterialRecord {
   id: string;
   date: string;
@@ -83,12 +109,23 @@ export function useRawMaterials() {
       } as any)
       .select()
       .single();
-    if (data) setRecords(prev => [data as RawMaterialRecord, ...prev]);
+    if (data) {
+      setRecords(prev => [data as RawMaterialRecord, ...prev]);
+      // Sum to centralized stock in canonical units
+      const { qty, unit: baseUnit } = toBaseUnit(materialName, quantity, unit);
+      await adjustMaterialStock(materialName, qty, baseUnit);
+    }
   };
 
   const removeRecord = async (id: string) => {
+    const target = records.find(r => r.id === id);
     await supabase.from('raw_materials').delete().eq('id', id);
     setRecords(prev => prev.filter(r => r.id !== id));
+    // Reverse the stock addition
+    if (target) {
+      const { qty, unit: baseUnit } = toBaseUnit(target.material_name, target.quantity, target.unit);
+      await adjustMaterialStock(target.material_name, -qty, baseUnit);
+    }
   };
 
   const getRecordsByDate = (dateStr: string) =>

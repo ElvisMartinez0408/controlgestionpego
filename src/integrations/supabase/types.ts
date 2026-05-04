@@ -124,6 +124,30 @@ export type Database = {
         }
         Relationships: []
       }
+      material_stock: {
+        Row: {
+          id: string
+          material_name: string
+          stock: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          material_name: string
+          stock?: number
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          material_name?: string
+          stock?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       production_records: {
         Row: {
           created_at: string
@@ -132,6 +156,7 @@ export type Database = {
           notes: string | null
           product_name: string
           quantity: number
+          shift_status: string
           unit: string
         }
         Insert: {
@@ -141,6 +166,7 @@ export type Database = {
           notes?: string | null
           product_name: string
           quantity: number
+          shift_status?: string
           unit?: string
         }
         Update: {
@@ -150,6 +176,7 @@ export type Database = {
           notes?: string | null
           product_name?: string
           quantity?: number
+          shift_status?: string
           unit?: string
         }
         Relationships: []

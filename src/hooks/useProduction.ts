@@ -8,6 +8,7 @@ export interface ProductionRecord {
   quantity: number;
   unit: string;
   notes?: string | null;
+  shift_status?: string | null;
 }
 
 export function useProduction() {
@@ -22,11 +23,22 @@ export function useProduction() {
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
-  const addRecord = async (productName: string, quantity: number, unit: string, date: string, notes?: string) => {
+  const addRecord = async (
+    productName: string,
+    quantity: number,
+    unit: string,
+    date: string,
+    notes?: string,
+    shiftStatus: string = 'Normal',
+  ) => {
     const { data } = await supabase.from('production_records')
-      .insert({ product_name: productName, quantity, unit, date, notes: notes || null })
+      .insert({ product_name: productName, quantity, unit, date, notes: notes || null, shift_status: shiftStatus } as any)
       .select().single();
-    if (data) setRecords(prev => [data, ...prev]);
+    if (data) {
+      setRecords(prev => [data as ProductionRecord, ...prev]);
+      return data as ProductionRecord;
+    }
+    return null;
   };
 
   const removeRecord = async (id: string) => {
