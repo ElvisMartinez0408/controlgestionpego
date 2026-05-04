@@ -2,6 +2,7 @@ import { MATERIALS, type RawMaterialRecord } from '@/hooks/useRawMaterials';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Package } from 'lucide-react';
+import { useMaterialStock } from '@/hooks/useMaterialStock';
 
 interface Props {
   records: RawMaterialRecord[];
@@ -18,6 +19,7 @@ const MATERIAL_ICONS: Record<string, string> = {
 };
 
 export function MaterialStatusCards({ records }: Props) {
+  const { getStock, stocks } = useMaterialStock();
   const getLastArrival = (material: string) => {
     const found = records
       .filter(r => r.material_name === material)
@@ -29,11 +31,13 @@ export function MaterialStatusCards({ records }: Props) {
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
         <Package className="w-4 h-4 text-primary" />
-        Última entrada por material
+        Stock actual por material
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2">
         {MATERIALS.map(mat => {
           const last = getLastArrival(mat);
+          const liveStock = getStock(mat);
+          const stockUnit = stocks.find(s => s.material_name === mat)?.unit ?? 'Kilos';
           const daysAgo = last
             ? formatDistanceToNow(new Date(last.date + 'T12:00:00'), { locale: es, addSuffix: true })
             : null;
@@ -50,17 +54,16 @@ export function MaterialStatusCards({ records }: Props) {
                 <span className="text-lg">{MATERIAL_ICONS[mat] || '📋'}</span>
                 <span className="text-[10px] font-medium text-foreground leading-tight line-clamp-2">{mat}</span>
 
+                <span className="text-sm text-primary font-bold leading-tight">
+                  {liveStock.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-[9px] text-muted-foreground -mt-1">{stockUnit}</span>
                 {last ? (
-                  <>
-                    <span className="text-[10px] text-primary font-semibold">
-                      {last.quantity.toLocaleString()} {last.unit}
-                    </span>
-                    <span className="text-[9px] text-muted-foreground leading-tight">
-                      {daysAgo}
-                    </span>
-                  </>
+                  <span className="text-[9px] text-muted-foreground/80 leading-tight">
+                    Últ: {daysAgo}
+                  </span>
                 ) : (
-                  <span className="text-[9px] text-muted-foreground/60 italic">Sin registros</span>
+                  <span className="text-[9px] text-muted-foreground/60 italic">Sin entradas</span>
                 )}
               </div>
             </div>
