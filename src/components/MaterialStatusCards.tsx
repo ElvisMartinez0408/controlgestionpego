@@ -1,4 +1,4 @@
-import { MATERIALS, type RawMaterialRecord } from '@/hooks/useRawMaterials';
+import { MATERIALS, BAG_TYPES, type RawMaterialRecord } from '@/hooks/useRawMaterials';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Package } from 'lucide-react';
@@ -16,6 +16,9 @@ const MATERIAL_ICONS: Record<string, string> = {
   'Redispersable': '🧪',
   'Silicón': '💧',
   'Bobina de Envoplast': '🔄',
+  'Bolsa Gris': '🛍️',
+  'Bolsa Blanco': '🛍️',
+  'Bolsa Premium': '🛍️',
 };
 
 export function MaterialStatusCards({ records }: Props) {
@@ -34,7 +37,7 @@ export function MaterialStatusCards({ records }: Props) {
         Stock actual por material
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2">
-        {MATERIALS.map(mat => {
+        {[...MATERIALS, ...BAG_TYPES].map(mat => {
           const last = getLastArrival(mat);
           const liveStock = getStock(mat);
           const stockUnit = stocks.find(s => s.material_name === mat)?.unit ?? 'Kilos';
