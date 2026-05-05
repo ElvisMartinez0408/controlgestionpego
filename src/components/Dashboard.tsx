@@ -1,6 +1,7 @@
 import { useAttendance } from '@/hooks/useAttendance';
 import { useProduction } from '@/hooks/useProduction';
 import { useSales } from '@/hooks/useSales';
+import { CapacityProjectionCard } from '@/components/CapacityProjectionCard';
 import { Users, Package, DollarSign, TrendingUp, UserCheck, UserX } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -120,6 +121,9 @@ export function Dashboard() {
           <p className="text-3xl font-bold text-gradient-orange mt-1">{totalSalesMonth.toLocaleString()}</p>
         </div>
       </div>
+
+      {/* Capacity projection */}
+      <CapacityProjectionCard />
 
       {/* Last 7 days chart */}
       <div className="glass-card p-6">
