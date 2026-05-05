@@ -1,15 +1,18 @@
 import { useState, useMemo } from 'react';
 import { useSales } from '@/hooks/useSales';
 import { useRole } from '@/contexts/RoleContext';
+import { useFinishedStock } from '@/hooks/useFinishedStock';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DollarSign, Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { DollarSign, Plus, Trash2, Edit2, Check, X, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 
 const PRODUCT_OPTIONS = ['Pego Gris', 'Pego Blanco', 'Pego Premium'];
 
 export function SalesTracker() {
   const { addRecord, updateRecord, removeRecord, getTodayRecords, records, loading } = useSales();
   const { isAdmin } = useRole();
+  const { getStock, adjustStock } = useFinishedStock();
   const [productName, setProductName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [client, setClient] = useState('');
@@ -33,14 +36,21 @@ export function SalesTracker() {
 
   const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  const handleAdd = () => {
-    if (productName.trim() && Number(quantity) > 0) {
-      addRecord(productName.trim(), Number(quantity), client.trim() || undefined, guideNumber.trim() || undefined);
-      setProductName('');
-      setQuantity('');
-      setClient('');
-      setGuideNumber('');
+  const handleAdd = async () => {
+    const qty = Number(quantity);
+    if (!productName.trim() || qty <= 0) return;
+    const available = getStock(productName);
+    if (qty > available) {
+      toast.error(`Stock insuficiente: solo hay ${available.toLocaleString()} sacos de ${productName}`);
+      return;
     }
+    await addRecord(productName.trim(), qty, client.trim() || undefined, guideNumber.trim() || undefined);
+    await adjustStock(productName.trim(), -qty);
+    toast.success(`Venta registrada y ${qty.toLocaleString()} sacos descontados de ${productName}`);
+    setProductName('');
+    setQuantity('');
+    setClient('');
+    setGuideNumber('');
   };
 
   const startEdit = (record: typeof todayRecords[0]) => {
@@ -53,15 +63,38 @@ export function SalesTracker() {
     });
   };
 
-  const saveEdit = () => {
-    if (editingId) {
-      updateRecord(editingId, {
-        product_name: editFields.product_name,
-        quantity: Number(editFields.quantity),
-        client: editFields.client || undefined,
-        notes: editFields.notes || undefined,
-      });
-      setEditingId(null);
+  const saveEdit = async () => {
+    if (!editingId) return;
+    const original = records.find(r => r.id === editingId);
+    const newQty = Number(editFields.quantity);
+    const newProduct = editFields.product_name;
+    if (original) {
+      // Reverse old, apply new
+      await adjustStock(original.product_name, original.quantity); // refund
+      const available = getStock(newProduct) + (newProduct === original.product_name ? original.quantity : 0);
+      if (newQty > available) {
+        // rollback refund
+        await adjustStock(original.product_name, -original.quantity);
+        toast.error(`Stock insuficiente: solo hay ${available.toLocaleString()} sacos de ${newProduct}`);
+        return;
+      }
+      await adjustStock(newProduct, -newQty);
+    }
+    await updateRecord(editingId, {
+      product_name: newProduct,
+      quantity: newQty,
+      client: editFields.client || undefined,
+      notes: editFields.notes || undefined,
+    });
+    setEditingId(null);
+  };
+
+  const handleRemove = async (id: string) => {
+    const target = records.find(r => r.id === id);
+    await removeRecord(id);
+    if (target) {
+      await adjustStock(target.product_name, target.quantity);
+      toast.success(`Venta eliminada · ${target.quantity.toLocaleString()} sacos devueltos al stock`);
     }
   };
 
@@ -96,6 +129,12 @@ export function SalesTracker() {
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Cantidad (sacos)</label>
               <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" className="bg-secondary border-border" min="0" />
+              {productName && (
+                <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                  {Number(quantity) > getStock(productName) && <AlertTriangle className="w-3 h-3 text-destructive" />}
+                  Stock disponible: <span className={Number(quantity) > getStock(productName) ? 'text-destructive font-semibold' : 'text-foreground font-semibold'}>{getStock(productName).toLocaleString()} sacos</span>
+                </p>
+              )}
             </div>
             <div className="relative">
               <label className="text-sm text-muted-foreground mb-1 block">Cliente (opcional)</label>
@@ -172,7 +211,7 @@ export function SalesTracker() {
                       <Button size="sm" variant="ghost" onClick={() => startEdit(record)} className="text-muted-foreground hover:text-foreground">
                         <Edit2 className="w-3.5 h-3.5" />
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => removeRecord(record.id)} className="text-muted-foreground hover:text-destructive">
+                      <Button size="sm" variant="ghost" onClick={() => handleRemove(record.id)} className="text-muted-foreground hover:text-destructive">
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>

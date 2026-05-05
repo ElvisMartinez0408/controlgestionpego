@@ -8,6 +8,7 @@ import { FinishedStockCards } from '@/components/FinishedStockCards';
 import { BagEntryForm } from '@/components/BagEntryForm';
 import { CustomSuppliesSection } from '@/components/CustomSuppliesSection';
 import { ResetStockButton } from '@/components/ResetStockButton';
+import { CapacityProjectionCard } from '@/components/CapacityProjectionCard';
 import { Warehouse, Plus, Trash2, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -105,6 +106,9 @@ export function RawMaterialsTracker() {
 
       {/* Finished product stock cards (manual edit) */}
       <FinishedStockCards />
+
+      {/* Capacity projection */}
+      <CapacityProjectionCard />
 
       {isAdmin && (
         <div className="glass-card p-4 space-y-3">
