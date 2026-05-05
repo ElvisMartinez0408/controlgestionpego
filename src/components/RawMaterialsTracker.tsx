@@ -7,6 +7,7 @@ import { MaterialStatusCards } from '@/components/MaterialStatusCards';
 import { FinishedStockCards } from '@/components/FinishedStockCards';
 import { BagEntryForm } from '@/components/BagEntryForm';
 import { CustomSuppliesSection } from '@/components/CustomSuppliesSection';
+import { ResetStockButton } from '@/components/ResetStockButton';
 import { Warehouse, Plus, Trash2, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -93,8 +94,13 @@ export function RawMaterialsTracker() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Registro de Materias Primas</h2>
-        <p className="text-muted-foreground capitalize">{displayDate}</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Registro de Materias Primas</h2>
+            <p className="text-muted-foreground capitalize">{displayDate}</p>
+          </div>
+          <ResetStockButton />
+        </div>
       </div>
 
       {/* Finished product stock cards (manual edit) */}
