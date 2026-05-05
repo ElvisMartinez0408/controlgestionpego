@@ -43,8 +43,24 @@ export function useFinishedStock() {
     if (data) setItems(prev => prev.map(i => (i.product_name === productName ? (data as FinishedStockRecord) : i)));
   };
 
+  /** Adjust stock by a delta (positive adds, negative subtracts). Never goes below 0. */
+  const adjustStock = async (productName: string, delta: number) => {
+    const current = items.find(i => i.product_name === productName);
+    const base = current ? Number(current.stock) : 0;
+    const next = Math.max(0, base + delta);
+    if (current) {
+      await updateStock(productName, next);
+    } else {
+      const { data } = await (supabase as any)
+        .from('finished_product_stock')
+        .insert({ product_name: productName, stock: next })
+        .select().single();
+      if (data) setItems(prev => [...prev, data as FinishedStockRecord]);
+    }
+  };
+
   const getStock = (productName: string) =>
     items.find(i => i.product_name === productName)?.stock ?? 0;
 
-  return { items, loading, updateStock, getStock };
+  return { items, loading, updateStock, adjustStock, getStock };
 }
