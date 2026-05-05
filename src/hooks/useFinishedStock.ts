@@ -23,6 +23,16 @@ export function useFinishedStock() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  useEffect(() => {
+    const channel = (supabase as any)
+      .channel('finished_product_stock_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'finished_product_stock' }, () => {
+        fetchAll();
+      })
+      .subscribe();
+    return () => { (supabase as any).removeChannel(channel); };
+  }, [fetchAll]);
+
   const updateStock = async (productName: string, stock: number) => {
     const { data } = await (supabase as any)
       .from('finished_product_stock')

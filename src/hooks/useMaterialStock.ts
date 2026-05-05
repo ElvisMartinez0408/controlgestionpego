@@ -21,6 +21,17 @@ export function useMaterialStock() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // Realtime: keep in sync across components / tabs
+  useEffect(() => {
+    const channel = (supabase as any)
+      .channel('material_stock_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'material_stock' }, () => {
+        fetchAll();
+      })
+      .subscribe();
+    return () => { (supabase as any).removeChannel(channel); };
+  }, [fetchAll]);
+
   const getStock = (name: string) => stocks.find(s => s.material_name === name)?.stock ?? 0;
 
   /** Adjusts stock by delta (positive = add, negative = subtract). Creates row if missing. */
