@@ -51,10 +51,10 @@ export function useAttendance() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
-  const checkIn = async (employeeId: string, manualTime?: string) => {
-    const today = getLocalToday();
+  const checkIn = async (employeeId: string, manualTime?: string, dateStr?: string) => {
+    const date = dateStr || getLocalToday();
     const time = manualTime || new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-    const existing = records.find(r => r.employee_id === employeeId && r.date === today);
+    const existing = records.find(r => r.employee_id === employeeId && r.date === date);
 
     if (existing) {
       const { data } = await supabase.from('attendance_records')
@@ -63,16 +63,16 @@ export function useAttendance() {
       if (data) setRecords(prev => prev.map(r => r.id === existing.id ? data : r));
     } else {
       const { data } = await supabase.from('attendance_records')
-        .insert({ employee_id: employeeId, date: today, check_in: time, status: 'present' })
+        .insert({ employee_id: employeeId, date, check_in: time, status: 'present' })
         .select().single();
       if (data) setRecords(prev => [...prev, data]);
     }
   };
 
-  const checkOut = async (employeeId: string, manualTime?: string) => {
-    const today = getLocalToday();
+  const checkOut = async (employeeId: string, manualTime?: string, dateStr?: string) => {
+    const date = dateStr || getLocalToday();
     const time = manualTime || new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-    const existing = records.find(r => r.employee_id === employeeId && r.date === today);
+    const existing = records.find(r => r.employee_id === employeeId && r.date === date);
     if (existing) {
       const { data } = await supabase.from('attendance_records')
         .update({ check_out: time })
@@ -81,9 +81,9 @@ export function useAttendance() {
     }
   };
 
-  const markAbsent = async (employeeId: string) => {
-    const today = getLocalToday();
-    const existing = records.find(r => r.employee_id === employeeId && r.date === today);
+  const markAbsent = async (employeeId: string, dateStr?: string) => {
+    const date = dateStr || getLocalToday();
+    const existing = records.find(r => r.employee_id === employeeId && r.date === date);
 
     if (existing) {
       const { data } = await supabase.from('attendance_records')
@@ -92,24 +92,24 @@ export function useAttendance() {
       if (data) setRecords(prev => prev.map(r => r.id === existing.id ? data : r));
     } else {
       const { data } = await supabase.from('attendance_records')
-        .insert({ employee_id: employeeId, date: today, status: 'absent' })
+        .insert({ employee_id: employeeId, date, status: 'absent' })
         .select().single();
       if (data) setRecords(prev => [...prev, data]);
     }
   };
 
-  const resetRecord = async (employeeId: string) => {
-    const today = getLocalToday();
-    const existing = records.find(r => r.employee_id === employeeId && r.date === today);
+  const resetRecord = async (employeeId: string, dateStr?: string) => {
+    const date = dateStr || getLocalToday();
+    const existing = records.find(r => r.employee_id === employeeId && r.date === date);
     if (existing) {
       await supabase.from('attendance_records').delete().eq('id', existing.id);
       setRecords(prev => prev.filter(r => r.id !== existing.id));
     }
   };
 
-  const getTodayRecord = (employeeId: string) => {
-    const today = getLocalToday();
-    return records.find(r => r.employee_id === employeeId && r.date === today);
+  const getTodayRecord = (employeeId: string, dateStr?: string) => {
+    const date = dateStr || getLocalToday();
+    return records.find(r => r.employee_id === employeeId && r.date === date);
   };
 
   const getMonthlyStats = (month: number, year: number) => {
