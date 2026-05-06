@@ -2,13 +2,15 @@ import { useAttendance } from '@/hooks/useAttendance';
 import { useProduction } from '@/hooks/useProduction';
 import { useSales } from '@/hooks/useSales';
 import { CapacityProjectionCard } from '@/components/CapacityProjectionCard';
-import { Users, Package, DollarSign, TrendingUp, UserCheck, UserX } from 'lucide-react';
+import { Users, Package, DollarSign, TrendingUp, UserCheck, UserX, AlertTriangle } from 'lucide-react';
+import { useStockAlerts } from '@/hooks/useStockAlerts';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export function Dashboard() {
   const { employees, records: attRecords, loading: attLoading } = useAttendance();
   const { records: prodRecords, loading: prodLoading, getMonthlyStats: getProdStats } = useProduction();
   const { records: saleRecords, loading: saleLoading, getTodayRecords: getTodaySales } = useSales();
+  const { alerts } = useStockAlerts();
 
   const loading = attLoading || prodLoading || saleLoading;
 
@@ -124,6 +126,32 @@ export function Dashboard() {
 
       {/* Capacity projection */}
       <CapacityProjectionCard />
+
+      {/* Stock alerts */}
+      {alerts.length > 0 && (
+        <div className="glass-card p-4 space-y-3 border-destructive/40">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            <h3 className="font-semibold text-foreground">Alertas de Stock Crítico ({alerts.length})</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {alerts.map(a => (
+              <span
+                key={a.id}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${
+                  a.severity === 'critical'
+                    ? 'border-destructive/60 bg-destructive/10 text-destructive'
+                    : 'border-primary/40 bg-primary/10 text-primary'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${a.severity === 'critical' ? 'bg-destructive animate-pulse' : 'bg-primary'}`} />
+                <strong className="font-semibold">{a.label}:</strong>
+                <span className="opacity-90">{a.detail}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Last 7 days chart */}
       <div className="glass-card p-6">
