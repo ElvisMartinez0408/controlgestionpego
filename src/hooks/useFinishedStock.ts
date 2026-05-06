@@ -25,7 +25,7 @@ export function useFinishedStock() {
 
   useEffect(() => {
     const channel = (supabase as any)
-      .channel('finished_product_stock_changes')
+      .channel(`finished_product_stock_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'finished_product_stock' }, () => {
         fetchAll();
       })
