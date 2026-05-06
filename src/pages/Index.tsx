@@ -14,6 +14,7 @@ import { ExportButton } from '@/components/ExportButton';
 import { GYCReportButton } from '@/components/GYCReportButton';
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
 import { LayoutDashboard, Users, BarChart3, Package, TrendingUp, DollarSign, LineChart, FileText, Warehouse, LogOut, Sun, Moon } from 'lucide-react';
+import { AlertsBell } from '@/components/AlertsBell';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import type { UserRole } from '@/contexts/RoleContext';
@@ -69,6 +70,7 @@ function IndexContent() {
             <div className="flex items-center gap-2">
               {isAdmin && <GYCReportButton />}
               <ExportButton />
+              <AlertsBell onNavigate={(t) => setActiveTab(t === 'raw-materials' ? 'raw-materials' : 'dashboard')} />
               <Button size="sm" variant="ghost" onClick={toggleTheme} className="text-muted-foreground hover:text-foreground" title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
                 {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
