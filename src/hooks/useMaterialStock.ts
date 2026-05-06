@@ -24,7 +24,7 @@ export function useMaterialStock() {
   // Realtime: keep in sync across components / tabs
   useEffect(() => {
     const channel = (supabase as any)
-      .channel('material_stock_changes')
+      .channel(`material_stock_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'material_stock' }, () => {
         fetchAll();
       })
