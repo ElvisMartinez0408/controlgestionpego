@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useAttendance } from '@/hooks/useAttendance';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { DateRangeFilter } from '@/components/DateRangeFilter';
 import { startOfMonth, endOfMonth } from 'date-fns';
+import { BarChart3, LineChart as LineChartIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function AttendanceChart() {
   const { getMonthlyStats, getWeeklyStats, loading } = useAttendance();
@@ -10,6 +12,7 @@ export function AttendanceChart() {
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
   const [dateRange, setDateRange] = useState({ from: startOfMonth(now), to: endOfMonth(now) });
+  const [chartType, setChartType] = useState<'bar' | 'line'>('bar');
 
   if (loading) return <div className="flex items-center justify-center p-12 text-muted-foreground">Cargando...</div>;
 
@@ -32,7 +35,17 @@ export function AttendanceChart() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3">
-        <h2 className="text-2xl font-bold text-foreground">Gráfica de Asistencia</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold text-foreground">Gráfica de Asistencia</h2>
+          <div className="inline-flex items-center rounded-lg border border-border bg-secondary p-0.5">
+            <button onClick={() => setChartType('bar')} className={cn('px-2 py-1 rounded-md transition-all flex items-center gap-1 text-xs', chartType === 'bar' ? 'gradient-orange text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>
+              <BarChart3 className="w-3.5 h-3.5" /> Barras
+            </button>
+            <button onClick={() => setChartType('line')} className={cn('px-2 py-1 rounded-md transition-all flex items-center gap-1 text-xs', chartType === 'line' ? 'gradient-orange text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>
+              <LineChartIcon className="w-3.5 h-3.5" /> Líneas
+            </button>
+          </div>
+        </div>
         <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} month={month} year={year} onMonthChange={handleMonthChange} />
       </div>
 
@@ -52,15 +65,27 @@ export function AttendanceChart() {
         <h3 className="font-semibold text-foreground mb-4">Asistencia Diaria</h3>
         {filteredData.length > 0 ? (
           <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={filteredData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 20%)" />
-              <XAxis dataKey="day" stroke="hsl(220 10% 55%)" fontSize={12} />
-              <YAxis stroke="hsl(220 10% 55%)" fontSize={12} allowDecimals={false} />
-              <Tooltip contentStyle={{ backgroundColor: 'hsl(220 18% 13%)', border: '1px solid hsl(220 14% 20%)', borderRadius: '8px', color: 'hsl(30 10% 92%)' }} />
-              <Legend />
-              <Bar dataKey="presentes" name="Presentes" fill="hsl(142 71% 45%)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="ausentes" name="Ausentes" fill="hsl(0 72% 51%)" radius={[4, 4, 0, 0]} />
-            </BarChart>
+            {chartType === 'bar' ? (
+              <BarChart data={filteredData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
+                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
+                <Legend />
+                <Bar dataKey="presentes" name="Presentes" fill="hsl(142 71% 45%)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="ausentes" name="Ausentes" fill="hsl(0 72% 51%)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            ) : (
+              <LineChart data={filteredData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
+                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
+                <Legend />
+                <Line type="monotone" dataKey="presentes" name="Presentes" stroke="hsl(142 71% 45%)" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="ausentes" name="Ausentes" stroke="hsl(0 72% 51%)" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            )}
           </ResponsiveContainer>
         ) : (
           <div className="h-[350px] flex items-center justify-center text-muted-foreground">No hay datos de asistencia para este periodo</div>
@@ -72,15 +97,27 @@ export function AttendanceChart() {
         <h3 className="font-semibold text-foreground mb-4">Asistencia Semanal</h3>
         {weeklyData.length > 0 ? (
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={weeklyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 20%)" />
-              <XAxis dataKey="week" stroke="hsl(220 10% 55%)" fontSize={11} />
-              <YAxis stroke="hsl(220 10% 55%)" fontSize={12} allowDecimals={false} />
-              <Tooltip contentStyle={{ backgroundColor: 'hsl(220 18% 13%)', border: '1px solid hsl(220 14% 20%)', borderRadius: '8px', color: 'hsl(30 10% 92%)' }} />
-              <Legend />
-              <Bar dataKey="presentes" name="Presentes" fill="hsl(142 71% 45%)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="ausentes" name="Ausentes" fill="hsl(0 72% 51%)" radius={[4, 4, 0, 0]} />
-            </BarChart>
+            {chartType === 'bar' ? (
+              <BarChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="week" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
+                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
+                <Legend />
+                <Bar dataKey="presentes" name="Presentes" fill="hsl(142 71% 45%)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="ausentes" name="Ausentes" fill="hsl(0 72% 51%)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            ) : (
+              <LineChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="week" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
+                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
+                <Legend />
+                <Line type="monotone" dataKey="presentes" name="Presentes" stroke="hsl(142 71% 45%)" strokeWidth={2} />
+                <Line type="monotone" dataKey="ausentes" name="Ausentes" stroke="hsl(0 72% 51%)" strokeWidth={2} />
+              </LineChart>
+            )}
           </ResponsiveContainer>
         ) : (
           <div className="h-[250px] flex items-center justify-center text-muted-foreground">Sin datos semanales</div>
