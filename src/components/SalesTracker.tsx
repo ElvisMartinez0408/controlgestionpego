@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DollarSign, Plus, Trash2, Edit2, Check, X, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { SmartUploadButton } from '@/components/SmartUploadButton';
 
 const PRODUCT_OPTIONS = ['Pego Gris', 'Pego Blanco', 'Pego Premium'];
 
@@ -111,9 +112,12 @@ export function SalesTracker() {
 
       {isAdmin && (
         <div className="glass-card p-4 space-y-3">
-          <h3 className="font-semibold text-foreground flex items-center gap-2">
-            <Plus className="w-4 h-4 text-primary" /> Nueva Venta
-          </h3>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <Plus className="w-4 h-4 text-primary" /> Nueva Venta
+            </h3>
+            <SmartUploadButton />
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Producto</label>
