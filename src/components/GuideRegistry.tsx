@@ -1,89 +1,140 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSales } from '@/hooks/useSales';
-import { useRole } from '@/contexts/RoleContext';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Edit2, Check, X, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { FileText, Search, Truck, User, MapPin, Hash, Phone, Package } from 'lucide-react';
+import { listGuideMetadata, GuideMetadata } from '@/lib/guidesDb';
 
 export function GuideRegistry() {
-  const { getGuideRecords, updateRecord } = useSales();
-  const { isAdmin } = useRole();
+  const { getGuideRecords } = useSales();
   const guides = getGuideRecords();
+  const [meta, setMeta] = useState<Record<string, GuideMetadata>>({});
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<string | null>(null);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editGuide, setEditGuide] = useState('');
+  useEffect(() => {
+    listGuideMetadata().then(list => {
+      const map: Record<string, GuideMetadata> = {};
+      list.forEach(g => { map[g.guideNumber] = g; });
+      setMeta(map);
+    });
+  }, [guides.length]);
 
-  const startEdit = (id: string, currentGuide: string) => {
-    setEditingId(id);
-    setEditGuide(currentGuide);
-  };
+  const filtered = useMemo(() => {
+    if (!query.trim()) return guides;
+    const q = query.toLowerCase();
+    return guides.filter(g => (g.notes || '').toLowerCase().includes(q));
+  }, [guides, query]);
 
-  const saveEdit = () => {
-    if (editingId) {
-      updateRecord(editingId, { notes: editGuide });
-      setEditingId(null);
-    }
-  };
+  const detail = selected ? meta[selected] : null;
+  const selectedSale = selected ? guides.find(g => g.notes === selected) : null;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <FileText className="w-6 h-6 text-primary" /> Registro de Guías
-        </h2>
-        <p className="text-muted-foreground">Números de guía registrados (orden descendente)</p>
+      <div className="flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <FileText className="w-6 h-6 text-primary" /> Registro de Guías
+          </h2>
+          <p className="text-muted-foreground">Toca cualquier guía para ver el detalle logístico completo</p>
+        </div>
+        <div className="relative w-full sm:w-72">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar Nº Guía..." className="pl-9 bg-secondary border-border" />
+        </div>
       </div>
 
-      {guides.length > 0 ? (
-        <div className="space-y-2">
-          <div className="glass-card p-3 grid grid-cols-5 gap-2 text-xs font-semibold text-muted-foreground">
-            <span>Nº Guía</span>
-            <span>Producto</span>
-            <span>Cantidad</span>
-            <span>Cliente</span>
-            <span>Fecha</span>
-          </div>
-          {guides.map(record => (
-            <div key={record.id} className="glass-card p-3 grid grid-cols-5 gap-2 items-center text-sm">
-              {editingId === record.id ? (
-                <>
-                  <Input value={editGuide} onChange={e => setEditGuide(e.target.value)} className="h-8 bg-secondary border-border text-sm" />
-                  <span className="text-foreground">{record.product_name}</span>
-                  <span className="text-primary font-bold">{record.quantity} sacos</span>
-                  <span className="text-muted-foreground">{record.client || '-'}</span>
-                  <div className="flex gap-1">
-                    <Button size="sm" onClick={saveEdit} className="h-7 bg-success/20 text-success hover:bg-success/30 border-0">
-                      <Check className="w-3 h-3" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-7">
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <span className="text-primary font-bold">{record.notes}</span>
-                  <span className="text-foreground">{record.product_name}</span>
-                  <span className="text-foreground">{record.quantity} sacos</span>
-                  <span className="text-muted-foreground">{record.client || '-'}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{record.date}</span>
-                    {isAdmin && (
-                      <Button size="sm" variant="ghost" onClick={() => startEdit(record.id, record.notes || '')} className="h-7 text-muted-foreground hover:text-foreground">
-                        <Edit2 className="w-3 h-3" />
-                      </Button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
+      {filtered.length === 0 ? (
+        <div className="glass-card p-8 text-center text-muted-foreground">
+          No hay guías registradas. Usa "Carga Inteligente" en Ventas para procesar un PDF.
         </div>
       ) : (
-        <div className="glass-card p-8 text-center text-muted-foreground">
-          No hay guías registradas. Agrega un "Número de Guía" al registrar ventas.
+        <div className="glass-card overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="text-primary">Guía #</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead className="text-right">Cantidad</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(r => (
+                <TableRow
+                  key={r.id}
+                  onClick={() => setSelected(r.notes!)}
+                  className="cursor-pointer border-border hover:bg-secondary/50 transition-colors"
+                >
+                  <TableCell className="font-bold text-primary">{r.notes}</TableCell>
+                  <TableCell className="text-muted-foreground">{r.date}</TableCell>
+                  <TableCell className="text-foreground">{r.client || '—'}</TableCell>
+                  <TableCell className="text-right text-foreground font-semibold">{r.quantity} sacos</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
+
+      <Sheet open={!!selected} onOpenChange={o => !o && setSelected(null)}>
+        <SheetContent className="bg-card border-border w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="text-foreground flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Guía {selected}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-6 space-y-5 text-sm">
+            <Section title="Pedido" icon={<Package className="w-4 h-4" />}>
+              <Row label="Producto" value={detail?.productName || selectedSale?.product_name} />
+              <Row label="Cantidad" value={`${detail?.quantity ?? selectedSale?.quantity ?? '—'} sacos`} highlight />
+              <Row label="Fecha" value={detail?.date || selectedSale?.date} />
+            </Section>
+            <Section title="Cliente" icon={<User className="w-4 h-4" />}>
+              <Row label="Razón Social" value={detail?.client || selectedSale?.client} />
+              <Row label="RIF" value={detail?.rif} />
+              <Row label="Teléfono" value={detail?.phone} icon={<Phone className="w-3 h-3" />} />
+              <Row label="Dirección" value={detail?.address} icon={<MapPin className="w-3 h-3" />} />
+            </Section>
+            <Section title="Conductor" icon={<User className="w-4 h-4" />}>
+              <Row label="Nombre" value={detail?.driverName} />
+              <Row label="Cédula" value={detail?.driverId} icon={<Hash className="w-3 h-3" />} />
+            </Section>
+            <Section title="Vehículo" icon={<Truck className="w-4 h-4" />}>
+              <Row label="Marca" value={detail?.vehicleBrand} />
+              <Row label="Placa" value={detail?.vehiclePlate} />
+            </Section>
+            {!detail && (
+              <p className="text-xs text-muted-foreground italic">
+                Esta guía fue creada manualmente. Procesa el PDF mediante "Carga Inteligente" para obtener metadatos completos.
+              </p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <h4 className="text-xs uppercase tracking-wider text-primary flex items-center gap-2 font-semibold">
+        {icon} {title}
+      </h4>
+      <div className="glass-card p-3 space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function Row({ label, value, icon, highlight }: { label: string; value?: string | number | null; icon?: React.ReactNode; highlight?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="text-muted-foreground text-xs flex items-center gap-1 shrink-0">{icon}{label}</span>
+      <span className={`text-right ${highlight ? 'text-primary font-bold' : 'text-foreground'}`}>{value || '—'}</span>
     </div>
   );
 }
