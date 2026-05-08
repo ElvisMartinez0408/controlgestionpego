@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProduction } from '@/hooks/useProduction';
 import { useRole } from '@/contexts/RoleContext';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { SHIFT_STATUSES, type ShiftStatus, type RecipeConsumption } from '@/lib/recipes';
 import { computeConsumptionLive, saveProductionSnapshot, getProductionSnapshot, deleteProductionSnapshot } from '@/lib/recipesDb';
-import { useEffect } from 'react';
 import { useMaterialStock } from '@/hooks/useMaterialStock';
 import { useFinishedStock } from '@/hooks/useFinishedStock';
 import { toast } from 'sonner';
