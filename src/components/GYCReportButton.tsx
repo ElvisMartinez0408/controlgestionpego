@@ -745,9 +745,15 @@ export function GYCReportButton() {
   };
 
   return (
-    <Button onClick={generatePDF} disabled={generating} size="sm" className="gradient-orange text-primary-foreground hover:opacity-90 gap-2">
+    <Button
+      onClick={generatePDF}
+      disabled={generating}
+      size="icon"
+      variant="ghost"
+      title="Reporte GYC (PDF)"
+      className="text-muted-foreground hover:text-primary h-9 w-9"
+    >
       {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-      {generating ? 'Generando...' : 'Reporte GYC'}
     </Button>
   );
 }
