@@ -30,11 +30,12 @@ export function ExportButton() {
     <Button
       onClick={handleExport}
       disabled={exporting}
-      className="gradient-orange text-primary-foreground hover:opacity-90 gap-2"
-      size="sm"
+      size="icon"
+      variant="ghost"
+      title="Exportar Excel"
+      className="text-muted-foreground hover:text-primary h-9 w-9"
     >
       {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-      {exporting ? 'Generando...' : 'Exportar Excel'}
     </Button>
   );
 }

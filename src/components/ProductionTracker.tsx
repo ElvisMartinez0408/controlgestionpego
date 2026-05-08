@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProduction } from '@/hooks/useProduction';
 import { useRole } from '@/contexts/RoleContext';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { es } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { RECIPES, SHIFT_STATUSES, computeConsumption, type ShiftStatus } from '@/lib/recipes';
+import { SHIFT_STATUSES, type ShiftStatus, type RecipeConsumption } from '@/lib/recipes';
+import { computeConsumptionLive, saveProductionSnapshot, getProductionSnapshot, deleteProductionSnapshot } from '@/lib/recipesDb';
 import { useMaterialStock } from '@/hooks/useMaterialStock';
 import { useFinishedStock } from '@/hooks/useFinishedStock';
 import { toast } from 'sonner';
@@ -24,6 +25,7 @@ export function ProductionTracker() {
   const [notes, setNotes] = useState('');
   const [shiftStatus, setShiftStatus] = useState<ShiftStatus>('Normal');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [previewConsumption, setPreviewConsumption] = useState<RecipeConsumption[]>([]);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const dateRecords = getRecordsByDate(dateStr);
@@ -31,16 +33,24 @@ export function ProductionTracker() {
 
   const displayDate = format(selectedDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
 
-  // Live preview of consumption for current product+quantity
-  const previewConsumption = productName && Number(quantity) > 0
-    ? computeConsumption(productName, Number(quantity))
-    : [];
+  // Live preview of consumption (reads CURRENT recipe from Dexie)
+  useEffect(() => {
+    let cancelled = false;
+    if (productName && Number(quantity) > 0) {
+      computeConsumptionLive(productName, Number(quantity)).then(c => {
+        if (!cancelled) setPreviewConsumption(c);
+      });
+    } else {
+      setPreviewConsumption([]);
+    }
+    return () => { cancelled = true; };
+  }, [productName, quantity]);
 
   const handleAdd = async () => {
     const sacks = Number(quantity);
     if (!productName.trim() || sacks <= 0) return;
 
-    const consumption = computeConsumption(productName, sacks);
+    const consumption = await computeConsumptionLive(productName, sacks);
 
     // Validate sufficient stock for every required material
     const missing = consumption.filter(c => getStock(c.material) < c.qty);
@@ -53,6 +63,15 @@ export function ProductionTracker() {
 
     const created = await addRecord(productName.trim(), sacks, 'sacos', dateStr, notes.trim() || undefined, shiftStatus);
     if (!created) return;
+
+    // Save historical snapshot of recipe used (for integrity on reversal)
+    await saveProductionSnapshot({
+      productionId: created.id,
+      product: productName.trim(),
+      sacks,
+      consumption,
+      createdAt: Date.now(),
+    });
 
     // Subtract raw materials & bags
     await adjustMany(consumption.map(c => ({ material: c.material, qty: -c.qty })));
@@ -73,14 +92,18 @@ export function ProductionTracker() {
   const handleRemove = async (id: string) => {
     const record = dateRecords.find(r => r.id === id);
     await removeRecord(id);
-    // Reverse the recipe: return materials, subtract from finished stock
+    // Reverse using the SNAPSHOT (so historical edits to the recipe don't break old reversals)
     if (record) {
-      const consumption = computeConsumption(record.product_name, record.quantity);
+      const snap = await getProductionSnapshot(id);
+      const consumption = snap
+        ? snap.consumption
+        : await computeConsumptionLive(record.product_name, record.quantity);
       if (consumption.length > 0) {
         await adjustMany(consumption.map(c => ({ material: c.material, qty: c.qty })));
       }
       const finished = getFinished(record.product_name);
       await updateFinished(record.product_name, Math.max(0, finished - record.quantity));
+      await deleteProductionSnapshot(id);
     }
   };
 
