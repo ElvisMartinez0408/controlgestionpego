@@ -25,6 +25,10 @@ async function adjustMaterialStock(materialName: string, delta: number, unit: st
       .from('material_stock')
       .insert({ material_name: materialName, stock: delta, unit });
   }
+  // Notify listeners (useMaterialStock) to refetch immediately
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('material-stock-updated', { detail: { materialName } }));
+  }
 }
 
 export interface RawMaterialRecord {

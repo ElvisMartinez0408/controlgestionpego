@@ -29,7 +29,12 @@ export function useMaterialStock() {
         fetchAll();
       })
       .subscribe();
-    return () => { (supabase as any).removeChannel(channel); };
+    const handler = () => fetchAll();
+    window.addEventListener('material-stock-updated', handler);
+    return () => {
+      (supabase as any).removeChannel(channel);
+      window.removeEventListener('material-stock-updated', handler);
+    };
   }, [fetchAll]);
 
   const getStock = (name: string) => stocks.find(s => s.material_name === name)?.stock ?? 0;

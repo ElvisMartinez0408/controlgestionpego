@@ -52,6 +52,8 @@ export function AttendanceTracker() {
     const target = employees.find(e => e.id === subFor);
     if (subName.trim() && target) {
       addEmployee(subName.trim(), `Suplente de ${target.name}`);
+      // Marcar automáticamente la falta del titular en la fecha seleccionada
+      markAbsent(target.id, dateStr);
       setSubName('');
       setSubFor('');
       setShowSubForm(false);
