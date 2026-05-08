@@ -13,21 +13,23 @@ import { PinGate, useDeviceAuth } from '@/components/PinGate';
 import { ExportButton } from '@/components/ExportButton';
 import { GYCReportButton } from '@/components/GYCReportButton';
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
-import { LayoutDashboard, Users, Package, DollarSign, FileText, Warehouse, LogOut, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Users, Package, DollarSign, FileText, Warehouse, LogOut, Sun, Moon, Settings } from 'lucide-react';
+import { SettingsPanel } from '@/components/SettingsPanel';
 import { AlertsBell } from '@/components/AlertsBell';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import type { UserRole } from '@/contexts/RoleContext';
 
-type Tab = 'dashboard' | 'raw-materials' | 'production' | 'sales' | 'attendance' | 'guides';
+type Tab = 'dashboard' | 'raw-materials' | 'production' | 'sales' | 'attendance' | 'guides' | 'settings';
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'dashboard', label: 'Tablero', icon: <LayoutDashboard className="w-4 h-4" /> },
-  { id: 'raw-materials', label: 'Inventario', icon: <Warehouse className="w-4 h-4" /> },
+  { id: 'attendance', label: 'Asistencia', icon: <Users className="w-4 h-4" /> },
   { id: 'production', label: 'Producción', icon: <Package className="w-4 h-4" /> },
   { id: 'sales', label: 'Ventas', icon: <DollarSign className="w-4 h-4" /> },
-  { id: 'attendance', label: 'Asistencia', icon: <Users className="w-4 h-4" /> },
   { id: 'guides', label: 'Guías', icon: <FileText className="w-4 h-4" /> },
+  { id: 'raw-materials', label: 'Inventario', icon: <Warehouse className="w-4 h-4" /> },
+  { id: 'settings', label: 'Configuración', icon: <Settings className="w-4 h-4" /> },
 ];
 
 function IndexContent() {
@@ -122,6 +124,7 @@ function IndexContent() {
           </div>
         )}
         {activeTab === 'guides' && <GuideRegistry />}
+        {activeTab === 'settings' && <SettingsPanel />}
       </main>
     </div>
   );
