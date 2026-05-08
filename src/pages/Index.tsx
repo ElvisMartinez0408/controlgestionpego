@@ -13,23 +13,20 @@ import { PinGate, useDeviceAuth } from '@/components/PinGate';
 import { ExportButton } from '@/components/ExportButton';
 import { GYCReportButton } from '@/components/GYCReportButton';
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
-import { LayoutDashboard, Users, BarChart3, Package, TrendingUp, DollarSign, LineChart, FileText, Warehouse, LogOut, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Users, Package, DollarSign, FileText, Warehouse, LogOut, Sun, Moon } from 'lucide-react';
 import { AlertsBell } from '@/components/AlertsBell';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import type { UserRole } from '@/contexts/RoleContext';
 
-type Tab = 'dashboard' | 'attendance' | 'attendance-chart' | 'production' | 'production-chart' | 'sales' | 'sales-chart' | 'raw-materials' | 'guides';
+type Tab = 'dashboard' | 'raw-materials' | 'production' | 'sales' | 'attendance' | 'guides';
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'dashboard', label: 'Tablero', icon: <LayoutDashboard className="w-4 h-4" /> },
-  { id: 'attendance', label: 'Asistencia', icon: <Users className="w-4 h-4" /> },
-  { id: 'attendance-chart', label: 'Gráfica Asistencia', icon: <BarChart3 className="w-4 h-4" /> },
+  { id: 'raw-materials', label: 'Inventario', icon: <Warehouse className="w-4 h-4" /> },
   { id: 'production', label: 'Producción', icon: <Package className="w-4 h-4" /> },
-  { id: 'production-chart', label: 'Gráfica Producción', icon: <TrendingUp className="w-4 h-4" /> },
   { id: 'sales', label: 'Ventas', icon: <DollarSign className="w-4 h-4" /> },
-  { id: 'sales-chart', label: 'Gráfica Ventas', icon: <LineChart className="w-4 h-4" /> },
-  { id: 'raw-materials', label: 'Materias Primas', icon: <Warehouse className="w-4 h-4" /> },
+  { id: 'attendance', label: 'Asistencia', icon: <Users className="w-4 h-4" /> },
   { id: 'guides', label: 'Guías', icon: <FileText className="w-4 h-4" /> },
 ];
 
@@ -105,13 +102,25 @@ function IndexContent() {
 
       <main className="container mx-auto px-4 py-6">
         {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'attendance' && <AttendanceTracker />}
-        {activeTab === 'attendance-chart' && <AttendanceChart />}
-        {activeTab === 'production' && <ProductionTracker />}
-        {activeTab === 'production-chart' && <ProductionChart />}
-        {activeTab === 'sales' && <SalesTracker />}
-        {activeTab === 'sales-chart' && <SalesChart />}
         {activeTab === 'raw-materials' && <RawMaterialsTracker />}
+        {activeTab === 'production' && (
+          <div className="space-y-8">
+            <ProductionTracker />
+            <div className="border-t border-border/60 pt-8"><ProductionChart /></div>
+          </div>
+        )}
+        {activeTab === 'sales' && (
+          <div className="space-y-8">
+            <SalesTracker />
+            <div className="border-t border-border/60 pt-8"><SalesChart /></div>
+          </div>
+        )}
+        {activeTab === 'attendance' && (
+          <div className="space-y-8">
+            <AttendanceTracker />
+            <div className="border-t border-border/60 pt-8"><AttendanceChart /></div>
+          </div>
+        )}
         {activeTab === 'guides' && <GuideRegistry />}
       </main>
     </div>
