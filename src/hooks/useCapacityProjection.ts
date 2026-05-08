@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
-import { RECIPES } from '@/lib/recipes';
+import { useEffect, useState } from 'react';
+import { listRecipes } from '@/lib/recipesDb';
+import type { RecipeRow } from '@/lib/recipesDb';
 import { useMaterialStock } from '@/hooks/useMaterialStock';
 
 export interface CapacityResult {
@@ -14,12 +15,19 @@ export interface CapacityResult {
  */
 export function useCapacityProjection() {
   const { stocks, loading, getStock } = useMaterialStock();
+  const [recipes, setRecipes] = useState<RecipeRow[]>([]);
 
-  const projections = useMemo<CapacityResult[]>(() => {
-    return Object.entries(RECIPES).map(([product, recipe]) => {
-      let min = Infinity;
-      let limiting: string | null = null;
-      for (const r of recipe) {
+  useEffect(() => {
+    const load = () => listRecipes().then(setRecipes);
+    load();
+    window.addEventListener('recipes-updated', load);
+    return () => window.removeEventListener('recipes-updated', load);
+  }, []);
+
+  const projections: CapacityResult[] = recipes.map(({ product, ingredients }) => {
+    let min = Infinity;
+    let limiting: string | null = null;
+    for (const r of ingredients) {
         if (r.qty <= 0) continue;
         const available = getStock(r.material);
         const possible = Math.floor(available / r.qty);
@@ -27,16 +35,15 @@ export function useCapacityProjection() {
           min = possible;
           limiting = r.material;
         }
-      }
-      return {
-        product,
-        maxSacks: Number.isFinite(min) ? min : 0,
-        limitingMaterial: limiting,
-      };
-    });
-    // re-run when stocks change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stocks]);
+    }
+    return {
+      product,
+      maxSacks: Number.isFinite(min) ? min : 0,
+      limitingMaterial: limiting,
+    };
+  });
+  // touch stocks so eslint/dep tracker is happy
+  void stocks;
 
   return { projections, loading };
 }
