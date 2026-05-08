@@ -69,10 +69,36 @@ export async function extractGuideFromPdf(file: File): Promise<ExtractedGuide> {
 
   const guideMatch = text.match(/N[°º]\s*CONTROL[:\s]*([A-Z0-9-]+)/i) || text.match(/(NE\d{6,})/);
   const dateMatch = text.match(/FECHA DE EMISION[:\s]*([\d/]+)/i);
-  const clientMatch = text.match(/(?:Nombre\/Razon Social|Cliente)\s*:?\s*([^\n]+)/i);
-  const rifMatch = text.match(/(?:Cedula\/Rif\.?|RIF)\s*:?\s*([JVEGPjvegp][\s-]?\d[\d\s.\-]*)/);
+  const rifMatch = text.match(/(?:Cedula\/Rif\.?|C\.I\.?\/RIF|RIF)\s*:?\s*([JVEGPjvegp][\s-]?\d[\d\s.\-]*)/);
   const addressMatch = text.match(/Direccion\s*:?\s*([^\n]+)/i);
   const phoneMatch = text.match(/Telefono\s*:?\s*([\d\s.\-()]+)/i);
+
+  // Robust client (Razón Social) extraction: scan lines, skip label-only / RIF lines
+  const allLines = text.split('\n').map(l => l.trim());
+  const labelRe = /^(Nombre\s*\/?\s*Razon\s*Social|Cliente)\s*:?\s*(.*)$/i;
+  const isOtherLabel = (s: string) => /^(Cedula|Rif|Direccion|Telefono|Material|Descripcion|N[°º]|FECHA|HORA|Conductor|Autorizado|Despachado|Recibido)/i.test(s);
+  let clientName: string | undefined;
+  for (let i = 0; i < allLines.length; i++) {
+    const m = allLines[i].match(labelRe);
+    if (!m) continue;
+    let candidate = m[2].trim();
+    // Strip trailing "Cedula/Rif..." appended on same line
+    candidate = candidate.replace(/\s*(Cedula\/Rif|RIF|C\.I).*$/i, '').trim();
+    if (!candidate || isOtherLabel(candidate)) {
+      // Look at next non-empty lines for the actual name
+      for (let j = i + 1; j < Math.min(i + 4, allLines.length); j++) {
+        const nxt = allLines[j];
+        if (!nxt) continue;
+        if (isOtherLabel(nxt) || labelRe.test(nxt)) continue;
+        candidate = nxt.replace(/\s*(Cedula\/Rif|RIF|C\.I).*$/i, '').trim();
+        if (candidate) break;
+      }
+    }
+    if (candidate && !/^[JVEGP][\s-]?\d/i.test(candidate)) {
+      clientName = candidate;
+      break;
+    }
+  }
 
   // Product line (table row): code description qty
   const productLine = text.split('\n').find(l => /PEGO|PBF|PGF|PPF/i.test(l) && /\d/.test(l));
@@ -123,7 +149,7 @@ export async function extractGuideFromPdf(file: File): Promise<ExtractedGuide> {
 
   return {
     guideNumber: guideMatch?.[1]?.trim() || '',
-    client: clientMatch?.[1]?.trim().replace(/\s+Cedula.*$/i, '').replace(/\s+Rif.*$/i, '').trim(),
+    client: clientName,
     rif: rifMatch?.[1]?.replace(/\s+/g, ' ').trim(),
     address: addressMatch?.[1]?.trim().replace(/\s+Telefono.*$/i, '').trim(),
     phone: phoneMatch?.[1]?.trim(),
