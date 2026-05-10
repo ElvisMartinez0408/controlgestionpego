@@ -1,16 +1,26 @@
+import { useEffect, useState } from 'react';
 import { useAttendance } from '@/hooks/useAttendance';
 import { useProduction } from '@/hooks/useProduction';
 import { useSales } from '@/hooks/useSales';
 import { CapacityProjectionCard } from '@/components/CapacityProjectionCard';
-import { Users, Package, DollarSign, TrendingUp, UserCheck, UserX, AlertTriangle } from 'lucide-react';
+import { Users, Package, DollarSign, TrendingUp, UserCheck, UserX, AlertTriangle, PackageX } from 'lucide-react';
 import { useStockAlerts } from '@/hooks/useStockAlerts';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { listDefectiveBags, type DefectiveBagRow } from '@/lib/recipesDb';
 
 export function Dashboard() {
   const { employees, records: attRecords, loading: attLoading } = useAttendance();
   const { records: prodRecords, loading: prodLoading, getMonthlyStats: getProdStats } = useProduction();
   const { records: saleRecords, loading: saleLoading, getTodayRecords: getTodaySales } = useSales();
   const { alerts } = useStockAlerts();
+  const [defects, setDefects] = useState<DefectiveBagRow[]>([]);
+
+  useEffect(() => {
+    const load = () => listDefectiveBags().then(setDefects);
+    load();
+    window.addEventListener('defective-bags-updated', load);
+    return () => window.removeEventListener('defective-bags-updated', load);
+  }, []);
 
   const loading = attLoading || prodLoading || saleLoading;
 
@@ -57,6 +67,17 @@ export function Dashboard() {
   const totalProdMonth = monthProdRecords.reduce((s, r) => s + r.quantity, 0);
   const monthSaleRecords = saleRecords.filter(r => { const d = new Date(r.date + 'T12:00:00'); return d.getMonth() === month && d.getFullYear() === year; });
   const totalSalesMonth = monthSaleRecords.reduce((s, r) => s + r.quantity, 0);
+
+  // Wastage: defective bags vs successful (sacks produced)
+  const totalGoodBags = prodRecords.reduce((s, r) => s + r.quantity, 0);
+  const totalDefBags = defects.reduce((s, d) => s + d.qty, 0);
+  const totalBags = totalGoodBags + totalDefBags;
+  const wastagePct = totalBags > 0 ? (totalDefBags / totalBags) * 100 : 0;
+  const defByOrigin = defects.reduce((acc, d) => { acc[d.origin] = (acc[d.origin] || 0) + d.qty; return acc; }, {} as Record<string, number>);
+  const wasteData = [
+    { name: 'Exitosas', value: totalGoodBags, color: 'hsl(25 95% 53%)' },
+    { name: 'Defectuosas', value: totalDefBags, color: 'hsl(50 100% 55%)' },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -126,6 +147,36 @@ export function Dashboard() {
 
       {/* Capacity projection */}
       <CapacityProjectionCard />
+
+      {/* Defective bags wastage widget */}
+      <div className="glass-card p-4" style={{ boxShadow: '0 0 0 1px hsl(50 100% 55% / 0.25), 0 0 16px hsl(50 100% 55% / 0.18)' }}>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold text-foreground flex items-center gap-2">
+            <PackageX className="w-4 h-4" style={{ color: 'hsl(50 100% 60%)' }} /> Desperdicio de Bolsas
+          </h3>
+          <span className="text-xs text-muted-foreground">{totalDefBags.toLocaleString()} de {totalBags.toLocaleString()}</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+          <div className="flex justify-center">
+            <ResponsiveContainer width="100%" height={120}>
+              <PieChart>
+                <Pie data={wasteData} dataKey="value" innerRadius={32} outerRadius={48} stroke="none">
+                  {wasteData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">% Desperdicio</p>
+            <p className="text-3xl font-bold" style={{ color: 'hsl(50 100% 60%)' }}>{wastagePct.toFixed(2)}%</p>
+          </div>
+          <div className="text-xs space-y-1">
+            <div className="flex justify-between"><span className="text-muted-foreground">Fábrica:</span><strong className="text-foreground">{(defByOrigin['Fábrica'] || 0).toLocaleString()}</strong></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Obrero:</span><strong className="text-foreground">{(defByOrigin['Obrero'] || 0).toLocaleString()}</strong></div>
+            <div className="flex justify-between border-t border-border/50 pt-1 mt-1"><span className="text-muted-foreground">Exitosas:</span><strong className="text-foreground">{totalGoodBags.toLocaleString()}</strong></div>
+          </div>
+        </div>
+      </div>
 
       {/* Stock alerts */}
       {alerts.length > 0 && (
