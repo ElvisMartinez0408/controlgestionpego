@@ -13,11 +13,12 @@ import { PinGate, useDeviceAuth } from '@/components/PinGate';
 import { ExportButton } from '@/components/ExportButton';
 import { GYCReportButton } from '@/components/GYCReportButton';
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
-import { LayoutDashboard, Users, Package, DollarSign, FileText, Warehouse, LogOut, Sun, Moon, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Package, DollarSign, FileText, Warehouse, LogOut, Sun, Moon, Settings, Menu } from 'lucide-react';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { AlertsBell } from '@/components/AlertsBell';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import type { UserRole } from '@/contexts/RoleContext';
 
 type Tab = 'dashboard' | 'raw-materials' | 'production' | 'sales' | 'attendance' | 'guides' | 'settings';
@@ -34,6 +35,7 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
 
 function IndexContent() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [mobileOpen, setMobileOpen] = useState(false);
   const { authorized, storedRole, authorize, revoke } = useDeviceAuth();
   const { setRole, isAdmin } = useRole();
   const { theme, toggleTheme } = useTheme();
@@ -58,6 +60,37 @@ function IndexContent() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
+              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                <SheetTrigger asChild>
+                  <Button size="icon" variant="ghost" className="lg:hidden text-foreground" aria-label="Abrir menú">
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 bg-card border-r border-border p-0">
+                  <SheetHeader className="p-4 border-b border-border">
+                    <SheetTitle className="flex items-center gap-2 text-foreground">
+                      <img src={logoImg} alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
+                      Control de Gestión
+                    </SheetTitle>
+                  </SheetHeader>
+                  <nav className="flex flex-col gap-1 p-3">
+                    {tabs.map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => { setActiveTab(tab.id); setMobileOpen(false); }}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                          activeTab === tab.id
+                            ? 'gradient-orange text-primary-foreground shadow-lg'
+                            : 'text-muted-foreground hover:text-primary hover:bg-secondary'
+                        }`}
+                      >
+                        {tab.icon}
+                        {tab.label}
+                      </button>
+                    ))}
+                  </nav>
+                </SheetContent>
+              </Sheet>
               <img src={logoImg} alt="Logo" className="w-10 h-10 rounded-lg object-cover" />
               <div>
                 <h1 className="text-xl font-bold text-foreground">Control de Gestión</h1>
@@ -81,7 +114,7 @@ function IndexContent() {
         </div>
       </header>
 
-      <nav className="border-b border-border bg-card/30">
+      <nav className="border-b border-border bg-card/30 hidden lg:block">
         <div className="container mx-auto px-4">
           <div className="flex gap-1 overflow-x-auto py-2">
             {tabs.map(tab => (
