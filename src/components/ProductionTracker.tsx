@@ -10,7 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { SHIFT_STATUSES, type ShiftStatus, type RecipeConsumption } from '@/lib/recipes';
-import { computeConsumptionLive, saveProductionSnapshot, getProductionSnapshot, deleteProductionSnapshot } from '@/lib/recipesDb';
+import { computeConsumptionLive, saveProductionSnapshot, getProductionSnapshot, deleteProductionSnapshot, addDefectiveBags, deleteDefectiveBagsByProduction, type DefectiveOrigin } from '@/lib/recipesDb';
 import { useMaterialStock } from '@/hooks/useMaterialStock';
 import { useFinishedStock } from '@/hooks/useFinishedStock';
 import { toast } from 'sonner';
@@ -26,6 +26,17 @@ export function ProductionTracker() {
   const [shiftStatus, setShiftStatus] = useState<ShiftStatus>('Normal');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [previewConsumption, setPreviewConsumption] = useState<RecipeConsumption[]>([]);
+  // Defective bags pending to register with this batch
+  const [defBagType, setDefBagType] = useState<'Pego Gris' | 'Pego Blanco' | 'Pego Premium'>('Pego Gris');
+  const [defQty, setDefQty] = useState('');
+  const [defOrigin, setDefOrigin] = useState<DefectiveOrigin>('Fábrica');
+  const [pendingDefects, setPendingDefects] = useState<{ product: 'Pego Gris' | 'Pego Blanco' | 'Pego Premium'; qty: number; origin: DefectiveOrigin }[]>([]);
+
+  const productToBag: Record<string, 'Bolsa Gris' | 'Bolsa Blanco' | 'Bolsa Premium'> = {
+    'Pego Gris': 'Bolsa Gris',
+    'Pego Blanco': 'Bolsa Blanco',
+    'Pego Premium': 'Bolsa Premium',
+  };
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const dateRecords = getRecordsByDate(dateStr);
@@ -52,8 +63,21 @@ export function ProductionTracker() {
 
     const consumption = await computeConsumptionLive(productName, sacks);
 
+    // Add defective bags to consumption (extra bag stock to subtract)
+    const defectsByBag: Record<string, number> = {};
+    pendingDefects.forEach(d => {
+      const bag = productToBag[d.product];
+      defectsByBag[bag] = (defectsByBag[bag] || 0) + d.qty;
+    });
+    const merged: RecipeConsumption[] = consumption.map(c => ({ ...c }));
+    Object.entries(defectsByBag).forEach(([bag, qty]) => {
+      const idx = merged.findIndex(c => c.material === bag);
+      if (idx >= 0) merged[idx].qty += qty;
+      else merged.push({ material: bag, qty });
+    });
+
     // Validate sufficient stock for every required material
-    const missing = consumption.filter(c => getStock(c.material) < c.qty);
+    const missing = merged.filter(c => getStock(c.material) < c.qty);
     if (missing.length > 0) {
       toast.error('Stock insuficiente', {
         description: missing.map(m => `${m.material}: faltan ${(m.qty - getStock(m.material)).toFixed(2)}`).join(' · '),
@@ -69,12 +93,26 @@ export function ProductionTracker() {
       productionId: created.id,
       product: productName.trim(),
       sacks,
-      consumption,
+      consumption: merged,
       createdAt: Date.now(),
     });
 
+    // Persist each defective entry linked to this batch
+    for (const d of pendingDefects) {
+      await addDefectiveBags({
+        id: `${created.id}-${Math.random().toString(36).slice(2, 9)}`,
+        productionId: created.id,
+        bagType: productToBag[d.product],
+        product: d.product,
+        qty: d.qty,
+        origin: d.origin,
+        date: dateStr,
+        createdAt: Date.now(),
+      });
+    }
+
     // Subtract raw materials & bags
-    await adjustMany(consumption.map(c => ({ material: c.material, qty: -c.qty })));
+    await adjustMany(merged.map(c => ({ material: c.material, qty: -c.qty })));
     // Add to finished product stock
     const currentFinished = getFinished(productName);
     await updateFinished(productName, currentFinished + sacks);
@@ -87,6 +125,8 @@ export function ProductionTracker() {
     setQuantity('');
     setNotes('');
     setShiftStatus('Normal');
+    setPendingDefects([]);
+    setDefQty('');
   };
 
   const handleRemove = async (id: string) => {
@@ -104,7 +144,18 @@ export function ProductionTracker() {
       const finished = getFinished(record.product_name);
       await updateFinished(record.product_name, Math.max(0, finished - record.quantity));
       await deleteProductionSnapshot(id);
+      await deleteDefectiveBagsByProduction(id);
     }
+  };
+
+  const addPendingDefect = () => {
+    const q = Number(defQty);
+    if (q <= 0) return;
+    setPendingDefects(p => [...p, { product: defBagType, qty: q, origin: defOrigin }]);
+    setDefQty('');
+  };
+  const removePendingDefect = (idx: number) => {
+    setPendingDefects(p => p.filter((_, i) => i !== idx));
   };
 
   if (loading) {
@@ -205,6 +256,76 @@ export function ProductionTracker() {
           <Button onClick={handleAdd} className="gradient-orange text-primary-foreground hover:opacity-90">
             <Package className="w-4 h-4 mr-2" /> Registrar Producción
           </Button>
+
+          {/* Defective bags section */}
+          <div
+            className="rounded-lg p-4 space-y-3 mt-2"
+            style={{
+              border: '1px solid hsl(50 100% 55% / 0.55)',
+              boxShadow: '0 0 0 1px hsl(50 100% 55% / 0.25), 0 0 18px hsl(50 100% 55% / 0.35)',
+              background: 'hsl(50 100% 55% / 0.04)',
+            }}
+          >
+            <h4 className="font-semibold flex items-center gap-2" style={{ color: 'hsl(50 100% 60%)' }}>
+              <AlertTriangle className="w-4 h-4" /> Bolsas Defectuosas en Jornada
+            </h4>
+            <p className="text-xs text-muted-foreground">Se sumarán al consumo de bolsas y se descontarán del inventario al registrar la producción.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Tipo de bolsa</label>
+                <select
+                  value={defBagType}
+                  onChange={e => setDefBagType(e.target.value as any)}
+                  className="w-full h-10 rounded-md border border-border bg-secondary px-3 text-sm text-foreground"
+                >
+                  <option value="Pego Gris">Bolsa Gris</option>
+                  <option value="Pego Blanco">Bolsa Blanco</option>
+                  <option value="Pego Premium">Bolsa Premium</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Cantidad</label>
+                <Input type="number" value={defQty} onChange={e => setDefQty(e.target.value)} placeholder="0" className="bg-secondary border-border" min="0" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs text-muted-foreground mb-1 block">Origen del defecto</label>
+                <div className="flex gap-2">
+                  {(['Fábrica', 'Obrero'] as DefectiveOrigin[]).map(o => (
+                    <button
+                      key={o}
+                      type="button"
+                      onClick={() => setDefOrigin(o)}
+                      className={cn(
+                        'flex-1 h-10 rounded-md border text-sm transition-colors',
+                        defOrigin === o
+                          ? 'border-yellow-400 bg-yellow-400/15 text-yellow-300 font-semibold'
+                          : 'border-border bg-secondary text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {o === 'Fábrica' ? 'Defecto de Fábrica' : 'Defecto por Obrero'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={addPendingDefect} className="border-yellow-500/40 text-yellow-300 hover:bg-yellow-400/10">
+              <Plus className="w-3.5 h-3.5 mr-1" /> Añadir defectuosas
+            </Button>
+            {pendingDefects.length > 0 && (
+              <div className="space-y-1.5">
+                {pendingDefects.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs rounded px-2 py-1.5 bg-yellow-400/5 border border-yellow-400/20">
+                    <span className="text-foreground">
+                      <strong className="text-yellow-300">{d.qty}</strong> {productToBag[d.product]} · {d.origin}
+                    </span>
+                    <button onClick={() => removePendingDefect(i)} className="text-muted-foreground hover:text-destructive">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

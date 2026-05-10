@@ -15,14 +15,32 @@ export interface ProductionSnapshot {
   createdAt: number;
 }
 
+export type DefectiveOrigin = 'Fábrica' | 'Obrero';
+export interface DefectiveBagRow {
+  id: string; // PK
+  productionId?: string; // optional link to a production batch
+  bagType: 'Bolsa Gris' | 'Bolsa Blanco' | 'Bolsa Premium';
+  product: 'Pego Gris' | 'Pego Blanco' | 'Pego Premium';
+  qty: number;
+  origin: DefectiveOrigin;
+  date: string; // YYYY-MM-DD
+  createdAt: number;
+}
+
 class RecipesDatabase extends Dexie {
   recipes!: Table<RecipeRow, string>;
   snapshots!: Table<ProductionSnapshot, string>;
+  defectiveBags!: Table<DefectiveBagRow, string>;
   constructor() {
     super('gyc_recipes');
     this.version(1).stores({
       recipes: '&product',
       snapshots: '&productionId, product',
+    });
+    this.version(2).stores({
+      recipes: '&product',
+      snapshots: '&productionId, product',
+      defectiveBags: '&id, productionId, date, product',
     });
   }
 }
@@ -72,6 +90,21 @@ export async function getProductionSnapshot(productionId: string) {
 
 export async function deleteProductionSnapshot(productionId: string) {
   await recipesDb.snapshots.delete(productionId);
+}
+
+export async function addDefectiveBags(row: DefectiveBagRow) {
+  await recipesDb.defectiveBags.put(row);
+  window.dispatchEvent(new CustomEvent('defective-bags-updated'));
+}
+
+export async function listDefectiveBags(): Promise<DefectiveBagRow[]> {
+  return recipesDb.defectiveBags.toArray();
+}
+
+export async function deleteDefectiveBagsByProduction(productionId: string) {
+  const rows = await recipesDb.defectiveBags.where('productionId').equals(productionId).toArray();
+  for (const r of rows) await recipesDb.defectiveBags.delete(r.id);
+  window.dispatchEvent(new CustomEvent('defective-bags-updated'));
 }
 
 /** Compute consumption based on the CURRENT (vigente) recipe in Dexie. */
