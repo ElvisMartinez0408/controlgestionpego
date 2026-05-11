@@ -73,10 +73,13 @@ export async function extractGuideFromPdf(file: File): Promise<ExtractedGuide> {
   const addressMatch = text.match(/Direccion\s*:?\s*([^\n]+)/i);
   const phoneMatch = text.match(/Telefono\s*:?\s*([\d\s.\-()]+)/i);
 
-  // Robust client (Razón Social) extraction: scan lines, skip label-only / RIF lines
+  // Robust client (Razón Social) extraction: scan lines, skip label-only / RIF / address lines
   const allLines = text.split('\n').map(l => l.trim());
-  const labelRe = /^(Nombre\s*\/?\s*Razon\s*Social|Cliente)\s*:?\s*(.*)$/i;
-  const isOtherLabel = (s: string) => /^(Cedula|Rif|Direccion|Telefono|Material|Descripcion|N[°º]|FECHA|HORA|Conductor|Autorizado|Despachado|Recibido)/i.test(s);
+  const labelRe = /^(Nombre\s*\/?\s*Razon\s*Social|Razon\s*Social|Cliente)\s*:?\s*(.*)$/i;
+  const isOtherLabel = (s: string) => /^(Cedula|C\.I|Rif|Direccion|Ubicacion|Telefono|Tel[eé]fono|Material|Descripci[oó]n|N[°º]|FECHA|HORA|Conductor|Autorizado|Despachado|Recibido|Despacho|Entrega)\b/i.test(s);
+  // Heuristic: address lines start with road/place keywords or contain typical address tokens
+  const isAddressLike = (s: string) => /\b(Av\.?|Avenida|Calle|Carrera|Carretera|Autopista|Km|KM|Galpon|Edif\.?|Edificio|Edf\.?|Local|Piso|Zona|Sector|Urb\.?|Urbanizaci[oó]n|Transversal|Esquina|Frente)\b/i.test(s);
+  const isRifLike = (s: string) => /^[JVEGP][-\s]?\d{3,}/i.test(s) || /^\d{6,}/.test(s);
   let clientName: string | undefined;
   for (let i = 0; i < allLines.length; i++) {
     const m = allLines[i].match(labelRe);
@@ -84,17 +87,19 @@ export async function extractGuideFromPdf(file: File): Promise<ExtractedGuide> {
     let candidate = m[2].trim();
     // Strip trailing "Cedula/Rif..." appended on same line
     candidate = candidate.replace(/\s*(Cedula\/Rif|RIF|C\.I).*$/i, '').trim();
-    if (!candidate || isOtherLabel(candidate)) {
+    if (!candidate || isOtherLabel(candidate) || isAddressLike(candidate) || isRifLike(candidate)) {
       // Look at next non-empty lines for the actual name
-      for (let j = i + 1; j < Math.min(i + 4, allLines.length); j++) {
+      candidate = '';
+      for (let j = i + 1; j < Math.min(i + 6, allLines.length); j++) {
         const nxt = allLines[j];
         if (!nxt) continue;
         if (isOtherLabel(nxt) || labelRe.test(nxt)) continue;
-        candidate = nxt.replace(/\s*(Cedula\/Rif|RIF|C\.I).*$/i, '').trim();
-        if (candidate) break;
+        if (isAddressLike(nxt) || isRifLike(nxt)) continue;
+        const c = nxt.replace(/\s*(Cedula\/Rif|RIF|C\.I).*$/i, '').trim();
+        if (c) { candidate = c; break; }
       }
     }
-    if (candidate && !/^[JVEGP][\s-]?\d/i.test(candidate)) {
+    if (candidate && !isRifLike(candidate) && !isAddressLike(candidate)) {
       clientName = candidate;
       break;
     }
@@ -126,8 +131,9 @@ export async function extractGuideFromPdf(file: File): Promise<ExtractedGuide> {
       if (/^[-_\s]+$/.test(ln)) continue;
       block.push(ln);
     }
-    // Identify ID line (V-xxxxxx / E-xxxxxx / J-xxxxx)
-    const idIdx = block.findIndex(l => /^[VEJPGvejpg][-\s]?\d{4,}/.test(l));
+    // Identify ID line: V-xxxxxx / E-xxxxxx / J-xxxxx OR Venezuelan cedula like 14.889.918 / 14889918
+    const idRe = /^([VEJPGvejpg][-\s]?\d[\d\.\s-]{4,}|\d{1,3}[\.\s-]?\d{3}[\.\s-]?\d{3}|\d{7,9})$/;
+    const idIdx = block.findIndex(l => idRe.test(l.trim()));
     if (idIdx >= 0) {
       driverName = block.slice(0, idIdx).join(' ').trim() || undefined;
       driverId = block[idIdx].replace(/\s+/g, '').toUpperCase();
