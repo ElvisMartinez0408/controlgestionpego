@@ -1,18 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSales } from '@/hooks/useSales';
+import { useRole } from '@/contexts/RoleContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { FileText, Search, Truck, User, MapPin, Hash, Phone, Package } from 'lucide-react';
-import { listGuideMetadata, GuideMetadata } from '@/lib/guidesDb';
+import { FileText, Search, Truck, User, MapPin, Hash, Phone, Package, X, Trash2 } from 'lucide-react';
+import { listGuideMetadata, GuideMetadata, deleteGuideMetadata, clearAllGuideMetadata } from '@/lib/guidesDb';
+import { PinConfirmDialog } from '@/components/PinConfirmDialog';
+import { toast } from 'sonner';
 
 export function GuideRegistry() {
-  const { getGuideRecords } = useSales();
+  const { getGuideRecords, removeRecord, removeAllRecords } = useSales();
+  const { isAdmin } = useRole();
   const guides = getGuideRecords();
   const [meta, setMeta] = useState<Record<string, GuideMetadata>>({});
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   useEffect(() => {
     listGuideMetadata().then(list => {
@@ -31,6 +36,22 @@ export function GuideRegistry() {
   const detail = selected ? meta[selected] : null;
   const selectedSale = selected ? guides.find(g => g.notes === selected) : null;
 
+  const handleDeleteOne = async (e: React.MouseEvent, guideNumber: string, saleId: string) => {
+    e.stopPropagation();
+    if (!confirm(`¿Eliminar la guía ${guideNumber}?`)) return;
+    await removeRecord(saleId);
+    await deleteGuideMetadata(guideNumber);
+    setMeta(prev => { const c = { ...prev }; delete c[guideNumber]; return c; });
+    toast.success(`Guía ${guideNumber} eliminada`);
+  };
+
+  const handleBulkDelete = async () => {
+    await removeAllRecords();
+    await clearAllGuideMetadata();
+    setMeta({});
+    toast.success('Historial de guías eliminado por completo');
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-end justify-between flex-wrap gap-3">
@@ -40,9 +61,16 @@ export function GuideRegistry() {
           </h2>
           <p className="text-muted-foreground">Toca cualquier guía para ver el detalle logístico completo</p>
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar Nº Guía..." className="pl-9 bg-secondary border-border" />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-72">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar Nº Guía..." className="pl-9 bg-secondary border-border" />
+          </div>
+          {isAdmin && guides.length > 0 && (
+            <Button size="sm" variant="destructive" onClick={() => setBulkOpen(true)} className="shrink-0">
+              <Trash2 className="w-3.5 h-3.5 mr-1" /> Eliminar Historial
+            </Button>
+          )}
         </div>
       </div>
 
@@ -59,6 +87,7 @@ export function GuideRegistry() {
                 <TableHead>Fecha</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead className="text-right">Cantidad</TableHead>
+                {isAdmin && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -72,12 +101,32 @@ export function GuideRegistry() {
                   <TableCell className="text-muted-foreground">{r.date}</TableCell>
                   <TableCell className="text-foreground">{r.client || '—'}</TableCell>
                   <TableCell className="text-right text-foreground font-semibold">{r.quantity} sacos</TableCell>
+                  {isAdmin && (
+                    <TableCell className="text-right p-1">
+                      <button
+                        onClick={(e) => handleDeleteOne(e, r.notes!, r.id)}
+                        className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        title="Eliminar guía"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       )}
+
+      <PinConfirmDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        title="Eliminar Historial Completo de Guías"
+        description="Esta acción borrará todas las guías y ventas registradas. Ingresa la clave de administrador para continuar."
+        destructiveLabel="Eliminar todo"
+        onConfirm={handleBulkDelete}
+      />
 
       <Sheet open={!!selected} onOpenChange={o => !o && setSelected(null)}>
         <SheetContent className="bg-card border-border w-full sm:max-w-md overflow-y-auto">
