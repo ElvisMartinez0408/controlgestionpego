@@ -43,6 +43,11 @@ export function useSales() {
     setRecords(prev => prev.filter(r => r.id !== id));
   };
 
+  const removeAllRecords = async () => {
+    await supabase.from('sale_records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    setRecords([]);
+  };
+
   const getTodayRecords = () => {
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -136,5 +141,6 @@ export function useSales() {
     getMonthlyClientBreakdown,
     getWeeklyStats,
     getGuideRecords,
+    removeAllRecords,
   };
 }

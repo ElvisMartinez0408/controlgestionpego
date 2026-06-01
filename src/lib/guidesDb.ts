@@ -41,3 +41,11 @@ export async function getGuideMetadata(guideNumber: string) {
 export async function listGuideMetadata() {
   return guidesDb.guides.toArray();
 }
+
+export async function deleteGuideMetadata(guideNumber: string) {
+  await guidesDb.guides.delete(guideNumber);
+}
+
+export async function clearAllGuideMetadata() {
+  await guidesDb.guides.clear();
+}

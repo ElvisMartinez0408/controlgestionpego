@@ -19,10 +19,9 @@ import { AlertsBell } from '@/components/AlertsBell';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { UserRole } from '@/contexts/RoleContext';
 
-type Tab = 'dashboard' | 'raw-materials' | 'production' | 'sales' | 'attendance' | 'guides';
+type Tab = 'dashboard' | 'raw-materials' | 'production' | 'sales' | 'attendance' | 'guides' | 'settings';
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'dashboard', label: 'Tablero', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -36,7 +35,6 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
 function IndexContent() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const { authorized, storedRole, authorize, revoke } = useDeviceAuth();
   const { setRole, isAdmin } = useRole();
   const { theme, toggleTheme } = useTheme();
@@ -105,7 +103,7 @@ function IndexContent() {
               <ExportButton />
               <AlertsBell onNavigate={(t) => setActiveTab(t === 'raw-materials' ? 'raw-materials' : 'dashboard')} />
               {isAdmin && (
-                <Button size="sm" variant="ghost" onClick={() => setSettingsOpen(true)} className="text-muted-foreground hover:text-foreground" title="Configuración">
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('settings')} className={`text-muted-foreground hover:text-foreground ${activeTab === 'settings' ? 'text-primary' : ''}`} title="Configuración">
                   <Settings className="w-4 h-4" />
                 </Button>
               )}
@@ -163,16 +161,8 @@ function IndexContent() {
           </div>
         )}
         {activeTab === 'guides' && <GuideRegistry />}
+        {activeTab === 'settings' && isAdmin && <SettingsPanel />}
       </main>
-
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="bg-card border-border max-w-3xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="sr-only">Configuración</DialogTitle>
-          </DialogHeader>
-          <SettingsPanel />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

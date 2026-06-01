@@ -46,6 +46,11 @@ export function useProduction() {
     setRecords(prev => prev.filter(r => r.id !== id));
   };
 
+  const removeAllRecords = async () => {
+    await supabase.from('production_records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    setRecords([]);
+  };
+
   const getRecordsByDate = (dateStr: string) => {
     return records.filter(r => r.date === dateStr);
   };
@@ -127,5 +132,6 @@ export function useProduction() {
     getMonthlyStats,
     getMonthlyProductBreakdown,
     getWeeklyStats,
+    removeAllRecords,
   };
 }
