@@ -14,9 +14,10 @@ import { computeConsumptionLive, saveProductionSnapshot, getProductionSnapshot, 
 import { useMaterialStock } from '@/hooks/useMaterialStock';
 import { useFinishedStock } from '@/hooks/useFinishedStock';
 import { toast } from 'sonner';
+import { PinConfirmDialog } from '@/components/PinConfirmDialog';
 
 export function ProductionTracker() {
-  const { addRecord, removeRecord, getRecordsByDate, loading } = useProduction();
+  const { addRecord, removeRecord, removeAllRecords, getRecordsByDate, loading } = useProduction();
   const { isAdmin } = useRole();
   const { stocks: materialStocks, getStock, adjustMany } = useMaterialStock();
   const { getStock: getFinished, updateStock: updateFinished } = useFinishedStock();
@@ -31,6 +32,7 @@ export function ProductionTracker() {
   const [defQty, setDefQty] = useState('');
   const [defOrigin, setDefOrigin] = useState<DefectiveOrigin>('Fábrica');
   const [pendingDefects, setPendingDefects] = useState<{ product: 'Pego Gris' | 'Pego Blanco' | 'Pego Premium'; qty: number; origin: DefectiveOrigin }[]>([]);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const productToBag: Record<string, 'Bolsa Gris' | 'Bolsa Blanco' | 'Bolsa Premium'> = {
     'Pego Gris': 'Bolsa Gris',
@@ -164,9 +166,16 @@ export function ProductionTracker() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">Registro de Producción</h2>
-        <p className="text-muted-foreground capitalize">{displayDate}</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Registro de Producción</h2>
+          <p className="text-muted-foreground capitalize">{displayDate}</p>
+        </div>
+        {isAdmin && (
+          <Button size="sm" variant="destructive" onClick={() => setBulkOpen(true)}>
+            <Trash2 className="w-3.5 h-3.5 mr-1" /> Eliminar Historial
+          </Button>
+        )}
       </div>
 
       {isAdmin && (
@@ -362,6 +371,15 @@ export function ProductionTracker() {
           ))}
         </div>
       )}
+
+      <PinConfirmDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        title="Eliminar Historial Completo de Producción"
+        description="Se borrarán todos los registros de producción. Esta acción no devolverá automáticamente el stock. Ingresa la clave de administrador."
+        destructiveLabel="Eliminar todo"
+        onConfirm={async () => { await removeAllRecords(); toast.success('Historial de producción eliminado'); }}
+      />
     </div>
   );
 }
