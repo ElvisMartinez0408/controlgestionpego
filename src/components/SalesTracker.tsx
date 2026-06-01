@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { DollarSign, Plus, Trash2, Edit2, Check, X, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { SmartUploadButton } from '@/components/SmartUploadButton';
+import { PinConfirmDialog } from '@/components/PinConfirmDialog';
 
 const PRODUCT_OPTIONS = ['Pego Gris', 'Pego Blanco', 'Pego Premium'];
 
 export function SalesTracker() {
-  const { addRecord, updateRecord, removeRecord, getTodayRecords, records, loading } = useSales();
+  const { addRecord, updateRecord, removeRecord, removeAllRecords, getTodayRecords, records, loading } = useSales();
   const { isAdmin } = useRole();
   const { getStock, adjustStock } = useFinishedStock();
   const [productName, setProductName] = useState('');
@@ -21,6 +22,7 @@ export function SalesTracker() {
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState({ product_name: '', quantity: '', client: '', notes: '' });
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const todayRecords = getTodayRecords();
   const totalToday = todayRecords.reduce((s, r) => s + r.quantity, 0);
@@ -105,9 +107,16 @@ export function SalesTracker() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">Registro de Ventas</h2>
-        <p className="text-muted-foreground capitalize">{today}</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Registro de Ventas</h2>
+          <p className="text-muted-foreground capitalize">{today}</p>
+        </div>
+        {isAdmin && (
+          <Button size="sm" variant="destructive" onClick={() => setBulkOpen(true)}>
+            <Trash2 className="w-3.5 h-3.5 mr-1" /> Eliminar Historial
+          </Button>
+        )}
       </div>
 
       {isAdmin && (
@@ -226,6 +235,15 @@ export function SalesTracker() {
           ))}
         </div>
       )}
+
+      <PinConfirmDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        title="Eliminar Historial Completo de Ventas"
+        description="Se borrarán todas las ventas registradas. Esta acción no restituirá el stock vendido. Ingresa la clave de administrador."
+        destructiveLabel="Eliminar todo"
+        onConfirm={async () => { await removeAllRecords(); toast.success('Historial de ventas eliminado'); }}
+      />
     </div>
   );
 }
