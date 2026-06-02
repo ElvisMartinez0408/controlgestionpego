@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { RecipesEditor } from './RecipesEditor';
 import { CompanyInfoEditor } from './CompanyInfoEditor';
+import { UsersAdminPanel } from './UsersAdminPanel';
 import { Button } from '@/components/ui/button';
-import { FlaskConical, Building2, RotateCcw, ShieldAlert } from 'lucide-react';
+import { FlaskConical, Building2, RotateCcw, ShieldAlert, Users } from 'lucide-react';
 import { PinConfirmDialog } from '@/components/PinConfirmDialog';
 import { fullSystemReset } from '@/lib/systemReset';
 import { toast } from 'sonner';
 
-type Section = 'recipes' | 'company' | 'restore';
+type Section = 'recipes' | 'company' | 'users' | 'restore';
 
 export function SettingsPanel() {
   const [section, setSection] = useState<Section>('recipes');
@@ -38,6 +39,14 @@ export function SettingsPanel() {
           <Building2 className="w-4 h-4" /> Información de la Empresa
         </button>
         <button
+          onClick={() => setSection('users')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            section === 'users' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Users className="w-4 h-4" /> Usuarios y Accesos
+        </button>
+        <button
           onClick={() => setSection('restore')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             section === 'restore' ? 'border-destructive text-destructive' : 'border-transparent text-muted-foreground hover:text-destructive'
@@ -49,6 +58,7 @@ export function SettingsPanel() {
 
       {section === 'recipes' && <RecipesEditor />}
       {section === 'company' && <CompanyInfoEditor />}
+      {section === 'users' && <UsersAdminPanel />}
       {section === 'restore' && (
         <div className="glass-card p-6 space-y-4 border-destructive/40">
           <div className="flex items-start gap-3">

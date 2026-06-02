@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { recipesDb } from '@/lib/recipesDb';
 import { clearAllGuideMetadata } from '@/lib/guidesDb';
+import { clearAllAudits } from '@/lib/audit';
 
 const ANY_ID = '00000000-0000-0000-0000-000000000000';
 
@@ -24,6 +25,7 @@ export async function fullSystemReset() {
   await recipesDb.snapshots.clear();
   await recipesDb.defectiveBags.clear();
   await clearAllGuideMetadata();
+  await clearAllAudits();
 
   // Notify any listeners
   if (typeof window !== 'undefined') {
