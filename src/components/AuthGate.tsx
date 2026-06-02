@@ -65,7 +65,7 @@ function LoginForm({ onSuccess, loginWith }: { onSuccess: () => void; loginWith:
     e.preventDefault();
     const res = loginWith(code, pass);
     if (res.ok) { onSuccess(); return; }
-    const reason = res.reason;
+    const reason = (res as { reason: string }).reason;
     if (reason === 'NOT_FOUND') setError('Código de invitación incorrecto');
     else if (reason === 'DISABLED') setError('Acceso bloqueado por admin');
     else setError('Contraseña incorrecta');
