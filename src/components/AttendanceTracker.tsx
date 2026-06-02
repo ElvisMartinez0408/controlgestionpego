@@ -13,7 +13,8 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContai
 
 export function AttendanceTracker() {
   const { employees, records, loading, addEmployee, removeEmployee, checkIn, checkOut, markAbsent, resetRecord, getTodayRecord } = useAttendance();
-  const { isAdmin } = useRole();
+  const { canCreate, canDelete } = useRole();
+  const isAdmin = canCreate; // create/edit allowed for admin + supervisor
   const [newName, setNewName] = useState('');
   const [newPosition, setNewPosition] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);

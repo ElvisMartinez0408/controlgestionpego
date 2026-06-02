@@ -11,14 +11,14 @@ import { cn } from '@/lib/utils';
 
 export function BagEntryForm() {
   const { addRecord } = useRawMaterials();
-  const { isAdmin } = useRole();
+  const { canCreate } = useRole();
   const [show, setShow] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
   const [bagType, setBagType] = useState<string>('');
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
 
-  if (!isAdmin) return null;
+  if (!canCreate) return null;
 
   const handleAdd = async () => {
     if (!bagType || Number(quantity) <= 0) return;
