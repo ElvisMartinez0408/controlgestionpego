@@ -203,9 +203,11 @@ export function AttendanceTracker() {
                       <RotateCcw className="w-3.5 h-3.5" />
                     </Button>
                   )}
-                  <Button size="sm" variant="ghost" onClick={() => removeEmployee(emp.id)} className="text-muted-foreground hover:text-destructive">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  {canDelete && (
+                    <Button size="sm" variant="ghost" onClick={() => removeEmployee(emp.id)} className="text-muted-foreground hover:text-destructive">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
