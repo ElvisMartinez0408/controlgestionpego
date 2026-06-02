@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { recordAudit, deleteAudit, clearAuditsFor } from '@/lib/audit';
 
 export interface ProductionRecord {
   id: string;
@@ -35,6 +36,7 @@ export function useProduction() {
       .insert({ product_name: productName, quantity, unit, date, notes: notes || null, shift_status: shiftStatus } as any)
       .select().single();
     if (data) {
+      await recordAudit('production', (data as any).id);
       setRecords(prev => [data as ProductionRecord, ...prev]);
       return data as ProductionRecord;
     }
@@ -43,11 +45,13 @@ export function useProduction() {
 
   const removeRecord = async (id: string) => {
     await supabase.from('production_records').delete().eq('id', id);
+    await deleteAudit('production', id);
     setRecords(prev => prev.filter(r => r.id !== id));
   };
 
   const removeAllRecords = async () => {
     await supabase.from('production_records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await clearAuditsFor('production');
     setRecords([]);
   };
 
