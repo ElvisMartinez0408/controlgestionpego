@@ -18,7 +18,8 @@ import { cn } from '@/lib/utils';
 
 export function RawMaterialsTracker() {
   const { records, loading, addRecord, removeRecord } = useRawMaterials();
-  const { isAdmin } = useRole();
+  const { canCreate, canDelete } = useRole();
+  const isAdmin = canCreate;
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [material, setMaterial] = useState<string>('');
   const [quantity, setQuantity] = useState('');
@@ -261,7 +262,7 @@ export function RawMaterialsTracker() {
                   <th className="text-left py-2 px-3 text-muted-foreground font-medium">Material</th>
                   <th className="text-right py-2 px-3 text-muted-foreground font-medium">Cantidad</th>
                   <th className="text-left py-2 px-3 text-muted-foreground font-medium">Unidad</th>
-                  {isAdmin && <th className="text-center py-2 px-3 text-muted-foreground font-medium">Acción</th>}
+                  {canDelete && <th className="text-center py-2 px-3 text-muted-foreground font-medium">Acción</th>}
                 </tr>
               </thead>
               <tbody>
@@ -273,7 +274,7 @@ export function RawMaterialsTracker() {
                     <td className="py-2 px-3 text-foreground">{record.material_name}</td>
                     <td className="py-2 px-3 text-right font-bold text-primary">{qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                     <td className="py-2 px-3 text-muted-foreground">{dispUnit}</td>
-                    {isAdmin && (
+                    {canDelete && (
                       <td className="py-2 px-3 text-center">
                         <Button size="sm" variant="ghost" onClick={() => removeRecord(record.id)} className="text-muted-foreground hover:text-destructive">
                           <Trash2 className="w-3.5 h-3.5" />

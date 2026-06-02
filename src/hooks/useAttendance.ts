@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { recordAudit, deleteAudit } from '@/lib/audit';
 
 export interface Employee {
   id: string;
@@ -60,12 +61,12 @@ export function useAttendance() {
       const { data } = await supabase.from('attendance_records')
         .update({ check_in: time, check_out: null, status: 'present' })
         .eq('id', existing.id).select().single();
-      if (data) setRecords(prev => prev.map(r => r.id === existing.id ? data : r));
+      if (data) { await recordAudit('attendance', data.id); setRecords(prev => prev.map(r => r.id === existing.id ? data : r)); }
     } else {
       const { data } = await supabase.from('attendance_records')
         .insert({ employee_id: employeeId, date, check_in: time, status: 'present' })
         .select().single();
-      if (data) setRecords(prev => [...prev, data]);
+      if (data) { await recordAudit('attendance', data.id); setRecords(prev => [...prev, data]); }
     }
   };
 
@@ -77,7 +78,7 @@ export function useAttendance() {
       const { data } = await supabase.from('attendance_records')
         .update({ check_out: time })
         .eq('id', existing.id).select().single();
-      if (data) setRecords(prev => prev.map(r => r.id === existing.id ? data : r));
+      if (data) { await recordAudit('attendance', data.id); setRecords(prev => prev.map(r => r.id === existing.id ? data : r)); }
     }
   };
 
@@ -89,12 +90,12 @@ export function useAttendance() {
       const { data } = await supabase.from('attendance_records')
         .update({ status: 'absent', check_in: null, check_out: null })
         .eq('id', existing.id).select().single();
-      if (data) setRecords(prev => prev.map(r => r.id === existing.id ? data : r));
+      if (data) { await recordAudit('attendance', data.id); setRecords(prev => prev.map(r => r.id === existing.id ? data : r)); }
     } else {
       const { data } = await supabase.from('attendance_records')
         .insert({ employee_id: employeeId, date, status: 'absent' })
         .select().single();
-      if (data) setRecords(prev => [...prev, data]);
+      if (data) { await recordAudit('attendance', data.id); setRecords(prev => [...prev, data]); }
     }
   };
 
@@ -103,6 +104,7 @@ export function useAttendance() {
     const existing = records.find(r => r.employee_id === employeeId && r.date === date);
     if (existing) {
       await supabase.from('attendance_records').delete().eq('id', existing.id);
+      await deleteAudit('attendance', existing.id);
       setRecords(prev => prev.filter(r => r.id !== existing.id));
     }
   };

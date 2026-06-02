@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ShieldAlert, Lock } from 'lucide-react';
-import { isValidAdminPin } from '@/lib/adminPin';
+import { isValidActiveAdminPassword } from '@/lib/authDb';
 import { toast } from 'sonner';
 
 interface PinConfirmDialogProps {
@@ -35,11 +35,11 @@ export function PinConfirmDialog({
     if (!open) { setPin(''); setWord(''); setBusy(false); }
   }, [open]);
 
-  const canSubmit = isValidAdminPin(pin) && (!requireConfirmWord || word.trim() === confirmWord);
+  const canSubmit = isValidActiveAdminPassword(pin) && (!requireConfirmWord || word.trim() === confirmWord);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValidAdminPin(pin)) { toast.error('Clave de administrador incorrecta'); return; }
+    if (!isValidActiveAdminPassword(pin)) { toast.error('Clave de administrador incorrecta'); return; }
     if (requireConfirmWord && word.trim() !== confirmWord) {
       toast.error(`Debe escribir exactamente "${confirmWord}"`);
       return;

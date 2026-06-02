@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { recordAudit, deleteAudit } from '@/lib/audit';
 
 /** Convert any incoming entry to canonical base unit (Kilos for weights, Unidades for bags). */
 function toBaseUnit(materialName: string, quantity: number, unit: string): { qty: number; unit: string } {
@@ -114,6 +115,7 @@ export function useRawMaterials() {
       .select()
       .single();
     if (data) {
+      await recordAudit('raw_materials', (data as RawMaterialRecord).id);
       setRecords(prev => [data as RawMaterialRecord, ...prev]);
       // Sum to centralized stock in canonical units
       const { qty, unit: baseUnit } = toBaseUnit(materialName, quantity, unit);
@@ -124,6 +126,7 @@ export function useRawMaterials() {
   const removeRecord = async (id: string) => {
     const target = records.find(r => r.id === id);
     await supabase.from('raw_materials').delete().eq('id', id);
+    await deleteAudit('raw_materials', id);
     setRecords(prev => prev.filter(r => r.id !== id));
     // Reverse the stock addition
     if (target) {
