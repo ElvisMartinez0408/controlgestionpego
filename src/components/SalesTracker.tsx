@@ -8,12 +8,14 @@ import { DollarSign, Plus, Trash2, Edit2, Check, X, AlertTriangle } from 'lucide
 import { toast } from 'sonner';
 import { SmartUploadButton } from '@/components/SmartUploadButton';
 import { PinConfirmDialog } from '@/components/PinConfirmDialog';
+import { useAudits, formatAuditStamp } from '@/lib/audit';
 
 const PRODUCT_OPTIONS = ['Pego Gris', 'Pego Blanco', 'Pego Premium'];
 
 export function SalesTracker() {
   const { addRecord, updateRecord, removeRecord, removeAllRecords, getTodayRecords, records, loading } = useSales();
-  const { isAdmin } = useRole();
+  const { isAdmin, canCreate, canDelete } = useRole();
+  const audits = useAudits('sales');
   const { getStock, adjustStock } = useFinishedStock();
   const [productName, setProductName] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -112,14 +114,14 @@ export function SalesTracker() {
           <h2 className="text-2xl font-bold text-foreground">Registro de Ventas</h2>
           <p className="text-muted-foreground capitalize">{today}</p>
         </div>
-        {isAdmin && (
+        {canDelete && (
           <Button size="sm" variant="destructive" onClick={() => setBulkOpen(true)}>
             <Trash2 className="w-3.5 h-3.5 mr-1" /> Eliminar Historial
           </Button>
         )}
       </div>
 
-      {isAdmin && (
+      {canCreate && (
         <div className="glass-card p-4 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="font-semibold text-foreground flex items-center gap-2">
@@ -218,15 +220,16 @@ export function SalesTracker() {
                     <span className="text-primary ml-2 font-bold">{record.quantity} sacos</span>
                     {record.client && <span className="text-xs text-muted-foreground ml-2">• {record.client}</span>}
                     {record.notes && <span className="text-xs text-primary/70 ml-2">Guía: {record.notes}</span>}
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Registrado por: {formatAuditStamp(audits[record.id])}</p>
                   </div>
-                  {isAdmin && (
+                  {(isAdmin || canCreate) && (
                     <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => startEdit(record)} className="text-muted-foreground hover:text-foreground">
+                      {canCreate && <Button size="sm" variant="ghost" onClick={() => startEdit(record)} className="text-muted-foreground hover:text-foreground">
                         <Edit2 className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleRemove(record.id)} className="text-muted-foreground hover:text-destructive">
+                      </Button>}
+                      {canDelete && <Button size="sm" variant="ghost" onClick={() => handleRemove(record.id)} className="text-muted-foreground hover:text-destructive">
                         <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      </Button>}
                     </div>
                   )}
                 </div>

@@ -9,10 +9,12 @@ import { FileText, Search, Truck, User, MapPin, Hash, Phone, Package, X, Trash2 
 import { listGuideMetadata, GuideMetadata, deleteGuideMetadata, clearAllGuideMetadata } from '@/lib/guidesDb';
 import { PinConfirmDialog } from '@/components/PinConfirmDialog';
 import { toast } from 'sonner';
+import { useAudits, formatAuditStamp } from '@/lib/audit';
 
 export function GuideRegistry() {
   const { getGuideRecords, removeRecord, removeAllRecords } = useSales();
-  const { isAdmin } = useRole();
+  const { isAdmin, canDelete } = useRole();
+  const audits = useAudits('sales');
   const guides = getGuideRecords();
   const [meta, setMeta] = useState<Record<string, GuideMetadata>>({});
   const [query, setQuery] = useState('');
@@ -66,7 +68,7 @@ export function GuideRegistry() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar Nº Guía..." className="pl-9 bg-secondary border-border" />
           </div>
-          {isAdmin && guides.length > 0 && (
+          {canDelete && guides.length > 0 && (
             <Button size="sm" variant="destructive" onClick={() => setBulkOpen(true)} className="shrink-0">
               <Trash2 className="w-3.5 h-3.5 mr-1" /> Eliminar Historial
             </Button>
@@ -87,7 +89,8 @@ export function GuideRegistry() {
                 <TableHead>Fecha</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead className="text-right">Cantidad</TableHead>
-                {isAdmin && <TableHead className="w-10" />}
+                <TableHead className="text-xs">Registrado por</TableHead>
+                {canDelete && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -101,7 +104,8 @@ export function GuideRegistry() {
                   <TableCell className="text-muted-foreground">{r.date}</TableCell>
                   <TableCell className="text-foreground">{r.client || '—'}</TableCell>
                   <TableCell className="text-right text-foreground font-semibold">{r.quantity} sacos</TableCell>
-                  {isAdmin && (
+                  <TableCell className="text-[11px] text-muted-foreground">{formatAuditStamp(audits[r.id])}</TableCell>
+                  {canDelete && (
                     <TableCell className="text-right p-1">
                       <button
                         onClick={(e) => handleDeleteOne(e, r.notes!, r.id)}

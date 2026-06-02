@@ -15,10 +15,12 @@ import { useMaterialStock } from '@/hooks/useMaterialStock';
 import { useFinishedStock } from '@/hooks/useFinishedStock';
 import { toast } from 'sonner';
 import { PinConfirmDialog } from '@/components/PinConfirmDialog';
+import { useAudits, formatAuditStamp } from '@/lib/audit';
 
 export function ProductionTracker() {
   const { addRecord, removeRecord, removeAllRecords, getRecordsByDate, loading } = useProduction();
-  const { isAdmin } = useRole();
+  const { isAdmin, canCreate, canDelete } = useRole();
+  const audits = useAudits('production');
   const { stocks: materialStocks, getStock, adjustMany } = useMaterialStock();
   const { getStock: getFinished, updateStock: updateFinished } = useFinishedStock();
   const [productName, setProductName] = useState('');
@@ -171,14 +173,14 @@ export function ProductionTracker() {
           <h2 className="text-2xl font-bold text-foreground">Registro de Producción</h2>
           <p className="text-muted-foreground capitalize">{displayDate}</p>
         </div>
-        {isAdmin && (
+        {canDelete && (
           <Button size="sm" variant="destructive" onClick={() => setBulkOpen(true)}>
             <Trash2 className="w-3.5 h-3.5 mr-1" /> Eliminar Historial
           </Button>
         )}
       </div>
 
-      {isAdmin && (
+      {canCreate && (
         <div className="glass-card p-4 space-y-3">
           <h3 className="font-semibold text-foreground flex items-center gap-2">
             <Plus className="w-4 h-4 text-primary" /> Nuevo Registro
@@ -361,8 +363,9 @@ export function ProductionTracker() {
                   <span className="ml-2 text-[10px] uppercase tracking-wide rounded px-1.5 py-0.5 bg-primary/10 text-primary">Normal</span>
                 )}
                 {record.notes && <p className="text-xs text-muted-foreground mt-0.5">{record.notes}</p>}
+                <p className="text-[10px] text-muted-foreground mt-0.5">Registrado por: {formatAuditStamp(audits[record.id])}</p>
               </div>
-              {isAdmin && (
+              {canDelete && (
                 <Button size="sm" variant="ghost" onClick={() => handleRemove(record.id)} className="text-muted-foreground hover:text-destructive">
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
