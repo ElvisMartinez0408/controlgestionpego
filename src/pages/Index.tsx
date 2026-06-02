@@ -9,7 +9,7 @@ import { SalesTracker } from '@/components/SalesTracker';
 import { SalesChart } from '@/components/SalesChart';
 import { GuideRegistry } from '@/components/GuideRegistry';
 import { RawMaterialsTracker } from '@/components/RawMaterialsTracker';
-import { PinGate, useDeviceAuth } from '@/components/PinGate';
+import { AuthGate } from '@/components/AuthGate';
 import { ExportButton } from '@/components/ExportButton';
 import { GYCReportButton } from '@/components/GYCReportButton';
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
@@ -19,7 +19,6 @@ import { AlertsBell } from '@/components/AlertsBell';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import type { UserRole } from '@/contexts/RoleContext';
 
 type Tab = 'dashboard' | 'raw-materials' | 'production' | 'sales' | 'attendance' | 'guides' | 'settings';
 
@@ -35,23 +34,10 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
 function IndexContent() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { authorized, storedRole, authorize, revoke } = useDeviceAuth();
-  const { setRole, isAdmin } = useRole();
+  const { user, userName, roleLabel, isAdmin, canDownload, canConfig, logout } = useRole();
   const { theme, toggleTheme } = useTheme();
 
-  const handleAuthorize = (role: UserRole) => {
-    authorize(role);
-    setRole(role);
-  };
-
-  // Sync stored role on mount
-  useState(() => {
-    if (authorized) setRole(storedRole);
-  });
-
-  if (!authorized) {
-    return <PinGate onAuthorized={handleAuthorize} />;
-  }
+  if (!user) return <AuthGate />;
 
   return (
     <div className="min-h-screen bg-background">
@@ -94,15 +80,17 @@ function IndexContent() {
               <div>
                 <h1 className="text-xl font-bold text-foreground">Control de Gestión</h1>
                 <p className="text-xs text-muted-foreground">
-                  {isAdmin ? '🔑 Administrador' : '👁 Solo Lectura'}
+                  Usuario: <span className="text-foreground font-semibold">{userName}</span>
+                  <span className="mx-1.5">|</span>
+                  Rol: <span className="text-primary font-semibold">{roleLabel}</span>
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {isAdmin && <GYCReportButton />}
-              <ExportButton />
+              {canDownload && <ExportButton />}
               <AlertsBell onNavigate={(t) => setActiveTab(t === 'raw-materials' ? 'raw-materials' : 'dashboard')} />
-              {isAdmin && (
+              {canConfig && (
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('settings')} className={`text-muted-foreground hover:text-foreground ${activeTab === 'settings' ? 'text-primary' : ''}`} title="Configuración">
                   <Settings className="w-4 h-4" />
                 </Button>
@@ -110,7 +98,7 @@ function IndexContent() {
               <Button size="sm" variant="ghost" onClick={toggleTheme} className="text-muted-foreground hover:text-foreground" title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
                 {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
-              <Button size="sm" variant="ghost" onClick={revoke} className="text-muted-foreground hover:text-destructive" title="Cerrar sesión">
+              <Button size="sm" variant="ghost" onClick={logout} className="text-muted-foreground hover:text-destructive" title="Cerrar sesión">
                 <LogOut className="w-4 h-4" />
               </Button>
             </div>
