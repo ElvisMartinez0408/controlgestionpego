@@ -14,7 +14,7 @@ const SUPA_TABLES = [
   'custom_supplies',
 ] as const;
 
-const LS_KEYS = ['db_gyc_config', 'gyc_company_info_v1'];
+const LS_KEYS = ['db_gyc_config', 'gyc_company_info_v1', 'gyc_pallets_v1'];
 const ANY_ID = '00000000-0000-0000-0000-000000000000';
 
 export interface BackupPayload {
