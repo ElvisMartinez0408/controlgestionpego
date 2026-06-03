@@ -201,6 +201,22 @@ export function SalesTracker() {
               <Input value={guideNumber} onChange={e => setGuideNumber(e.target.value)} placeholder="Ej: 001234" className="bg-secondary border-border" onKeyDown={e => e.key === 'Enter' && handleAdd()} />
             </div>
           </div>
+          {/* Pallets fields */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-primary" /> Paletas Entregadas
+              </label>
+              <Input type="number" min="0" value={palletsDelivered} onChange={e => setPalletsDelivered(e.target.value)} className="bg-secondary border-border" />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-success" /> Paletas Recibidas / Retorno
+              </label>
+              <Input type="number" min="0" value={palletsReceived} onChange={e => setPalletsReceived(e.target.value)} className="bg-secondary border-border" />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Deja ambos en <code className="px-1 rounded bg-secondary text-foreground">0</code> para despacho a granel sin paletas.</p>
           <Button onClick={handleAdd} className="gradient-orange text-primary-foreground hover:opacity-90">
             <DollarSign className="w-4 h-4 mr-2" /> Registrar Venta
           </Button>
