@@ -9,7 +9,8 @@ import { BagEntryForm } from '@/components/BagEntryForm';
 import { CustomSuppliesSection } from '@/components/CustomSuppliesSection';
 import { ResetStockButton } from '@/components/ResetStockButton';
 import { CapacityProjectionCard } from '@/components/CapacityProjectionCard';
-import { Warehouse, Plus, Trash2, CalendarIcon } from 'lucide-react';
+import { Warehouse, Plus, Trash2, CalendarIcon, Layers } from 'lucide-react';
+import { PalletsDashboard } from '@/components/PalletsDashboard';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
@@ -28,6 +29,7 @@ export function RawMaterialsTracker() {
   const [notes, setNotes] = useState('');
   // Display unit toggle for Cementos/Arena: 'kg' shows raw kilos, 'tn' converts to toneladas
   const [weightDisplay, setWeightDisplay] = useState<'kg' | 'tn'>('tn');
+  const [palletsOpen, setPalletsOpen] = useState(false);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const displayDate = format(selectedDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
@@ -101,9 +103,16 @@ export function RawMaterialsTracker() {
             <h2 className="text-2xl font-bold text-foreground">Registro de Materias Primas</h2>
             <p className="text-muted-foreground capitalize">{displayDate}</p>
           </div>
-          <ResetStockButton />
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" variant="outline" onClick={() => setPalletsOpen(true)} className="border-primary/40 text-primary hover:bg-primary/10">
+              <Layers className="w-4 h-4 mr-1.5" /> Tablero de Paletas
+            </Button>
+            <ResetStockButton />
+          </div>
         </div>
       </div>
+
+      <PalletsDashboard open={palletsOpen} onOpenChange={setPalletsOpen} />
 
       {/* Finished product stock cards (manual edit) */}
       <FinishedStockCards />

@@ -4,11 +4,12 @@ import { useRole } from '@/contexts/RoleContext';
 import { useFinishedStock } from '@/hooks/useFinishedStock';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DollarSign, Plus, Trash2, Edit2, Check, X, AlertTriangle } from 'lucide-react';
+import { DollarSign, Plus, Trash2, Edit2, Check, X, AlertTriangle, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { SmartUploadButton } from '@/components/SmartUploadButton';
 import { PinConfirmDialog } from '@/components/PinConfirmDialog';
 import { useAudits, formatAuditStamp } from '@/lib/audit';
+import { addMovement, removeMovementsBySale } from '@/lib/palletsDb';
 
 const PRODUCT_OPTIONS = ['Pego Gris', 'Pego Blanco', 'Pego Premium'];
 
@@ -21,6 +22,8 @@ export function SalesTracker() {
   const [quantity, setQuantity] = useState('');
   const [client, setClient] = useState('');
   const [guideNumber, setGuideNumber] = useState('');
+  const [palletsDelivered, setPalletsDelivered] = useState('0');
+  const [palletsReceived, setPalletsReceived] = useState('0');
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState({ product_name: '', quantity: '', client: '', notes: '' });
@@ -49,13 +52,29 @@ export function SalesTracker() {
       toast.error(`Stock insuficiente: solo hay ${available.toLocaleString()} sacos de ${productName}`);
       return;
     }
-    await addRecord(productName.trim(), qty, client.trim() || undefined, guideNumber.trim() || undefined);
+    const sale = await addRecord(productName.trim(), qty, client.trim() || undefined, guideNumber.trim() || undefined);
     await adjustStock(productName.trim(), -qty);
-    toast.success(`Venta registrada y ${qty.toLocaleString()} sacos descontados de ${productName}`);
+
+    // Pallets ledger (saved only if at least one value > 0)
+    const dlv = Math.max(0, Math.round(Number(palletsDelivered) || 0));
+    const rcv = Math.max(0, Math.round(Number(palletsReceived) || 0));
+    if (dlv > 0 || rcv > 0) {
+      addMovement({
+        client: client.trim() || 'Sin cliente',
+        delivered: dlv,
+        received: rcv,
+        saleId: (sale as any)?.id,
+        note: guideNumber.trim() ? `Guía ${guideNumber.trim()}` : undefined,
+      });
+    }
+
+    toast.success(`Venta registrada · ${qty.toLocaleString()} sacos descontados${dlv || rcv ? ` · paletas: +${dlv} / -${rcv}` : ''}`);
     setProductName('');
     setQuantity('');
     setClient('');
     setGuideNumber('');
+    setPalletsDelivered('0');
+    setPalletsReceived('0');
   };
 
   const startEdit = (record: typeof todayRecords[0]) => {
@@ -97,6 +116,7 @@ export function SalesTracker() {
   const handleRemove = async (id: string) => {
     const target = records.find(r => r.id === id);
     await removeRecord(id);
+    removeMovementsBySale(id);
     if (target) {
       await adjustStock(target.product_name, target.quantity);
       toast.success(`Venta eliminada · ${target.quantity.toLocaleString()} sacos devueltos al stock`);
@@ -181,6 +201,22 @@ export function SalesTracker() {
               <Input value={guideNumber} onChange={e => setGuideNumber(e.target.value)} placeholder="Ej: 001234" className="bg-secondary border-border" onKeyDown={e => e.key === 'Enter' && handleAdd()} />
             </div>
           </div>
+          {/* Pallets fields */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-primary" /> Paletas Entregadas
+              </label>
+              <Input type="number" min="0" value={palletsDelivered} onChange={e => setPalletsDelivered(e.target.value)} className="bg-secondary border-border" />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-success" /> Paletas Recibidas / Retorno
+              </label>
+              <Input type="number" min="0" value={palletsReceived} onChange={e => setPalletsReceived(e.target.value)} className="bg-secondary border-border" />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Deja ambos en <code className="px-1 rounded bg-secondary text-foreground">0</code> para despacho a granel sin paletas.</p>
           <Button onClick={handleAdd} className="gradient-orange text-primary-foreground hover:opacity-90">
             <DollarSign className="w-4 h-4 mr-2" /> Registrar Venta
           </Button>

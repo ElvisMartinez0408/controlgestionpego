@@ -33,6 +33,7 @@ export function useSales() {
       await recordAudit('sales', data.id);
       setRecords(prev => [data, ...prev]);
     }
+    return data ?? null;
   };
 
   const updateRecord = async (id: string, updates: { product_name?: string; quantity?: number; client?: string; notes?: string }) => {
