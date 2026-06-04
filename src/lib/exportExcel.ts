@@ -428,6 +428,151 @@ export async function exportToExcel(
     row.height = 22;
   });
 
+  // ===== 6. MATERIAS PRIMAS =====
+  const rawRecords = extras.rawRecords ?? [];
+  if (rawRecords.length > 0) {
+    const wsRaw = wb.addWorksheet('Materias Primas');
+    setSheetBackground(wsRaw);
+    wsRaw.columns = [
+      { width: 14 }, { width: 24 }, { width: 16 }, { width: 14 }, { width: 14 }, { width: 16 }, { width: 28 }, { width: 28 },
+    ];
+    addTitle(wsRaw, '🧱 ENTRADAS DE MATERIA PRIMA', 8);
+    const rawHeaders = ['Fecha', 'Material', 'Cantidad', 'Unidad', 'Sacos', 'Kilos/Saco', 'Notas', 'Registrado por'];
+    styleHeaderRow(wsRaw.addRow(rawHeaders), 8);
+    [...rawRecords].sort((a, b) => b.date.localeCompare(a.date)).forEach((rec, i) => {
+      const row = wsRaw.addRow([
+        rec.date, rec.material_name, rec.quantity, rec.unit,
+        rec.sack_count ?? '-', rec.kilos_per_sack ?? '-', rec.notes || '-',
+        formatAuditStamp(extras.audits?.raw_materials?.[rec.id]),
+      ]);
+      for (let c = 1; c <= 8; c++) styleDataCell(row.getCell(c), i % 2 === 0);
+      row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
+      row.height = 22;
+    });
+  }
+
+  // ===== 7. INVENTARIOS (Stock actual) =====
+  const finStock = extras.finishedStock ?? [];
+  const matStock = extras.materialStock ?? [];
+  const supplies = extras.customSupplies ?? [];
+  if (finStock.length + matStock.length + supplies.length > 0) {
+    const wsInv = wb.addWorksheet('Inventarios');
+    setSheetBackground(wsInv);
+    wsInv.columns = [{ width: 28 }, { width: 18 }, { width: 14 }, { width: 22 }];
+    addTitle(wsInv, '📊 INVENTARIOS ACTUALES', 4);
+
+    const addBlock = (title: string, headers: string[], rows: (string | number)[][]) => {
+      const t = wsInv.addRow([title]);
+      wsInv.mergeCells(t.number, 1, t.number, 4);
+      t.getCell(1).font = { bold: true, size: 12, color: { argb: COLORS.orange }, name: 'Arial' };
+      t.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.bgDark } };
+      t.getCell(1).alignment = { horizontal: 'left' };
+      styleHeaderRow(wsInv.addRow(headers), headers.length);
+      rows.forEach((r, i) => {
+        const row = wsInv.addRow(r);
+        for (let c = 1; c <= headers.length; c++) styleDataCell(row.getCell(c), i % 2 === 0);
+        row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+        row.height = 22;
+      });
+      wsInv.addRow([]);
+    };
+
+    if (finStock.length) {
+      addBlock('PRODUCTO TERMINADO (sacos)', ['Producto', 'Stock', '', 'Actualizado'],
+        finStock.map(s => [s.product_name, s.stock, '', new Date(s.updated_at).toLocaleString('es-VE')]));
+    }
+    if (matStock.length) {
+      addBlock('MATERIA PRIMA EN STOCK', ['Material', 'Stock', 'Unidad', 'Actualizado'],
+        matStock.map(s => [s.material_name, Number(s.stock), s.unit, new Date(s.updated_at).toLocaleString('es-VE')]));
+    }
+    if (supplies.length) {
+      addBlock('INSUMOS PERSONALIZADOS', ['Nombre', 'Cantidad', 'Unidad', 'Umbral de alerta'],
+        supplies.map(s => [s.name, Number(s.current_quantity), s.unit, Number(s.alert_threshold)]));
+    }
+  }
+
+  // ===== 8. GUÍAS =====
+  const guides = extras.guides ?? [];
+  if (guides.length > 0) {
+    const wsG = wb.addWorksheet('Guías');
+    setSheetBackground(wsG);
+    wsG.columns = [
+      { width: 14 }, { width: 14 }, { width: 24 }, { width: 14 }, { width: 14 }, { width: 22 }, { width: 20 }, { width: 18 }, { width: 16 }, { width: 28 },
+    ];
+    addTitle(wsG, '🚚 REGISTRO DE GUÍAS', 10);
+    const gh = ['Nº Guía', 'Fecha', 'Cliente', 'RIF', 'Producto', 'Cantidad', 'Chofer', 'Cédula', 'Placa', 'Registrado por'];
+    styleHeaderRow(wsG.addRow(gh), 10);
+    [...guides].sort((a, b) => (b.date || '').localeCompare(a.date || '')).forEach((g, i) => {
+      const row = wsG.addRow([
+        g.guideNumber, g.date || '-', g.client || '-', g.rif || '-',
+        g.productName || g.product || '-', g.quantity ?? '-',
+        g.driverName || '-', g.driverId || '-', g.vehiclePlate || '-',
+        formatAuditStamp(extras.audits?.guides?.[g.guideNumber]),
+      ]);
+      for (let c = 1; c <= 10; c++) styleDataCell(row.getCell(c), i % 2 === 0);
+      row.height = 22;
+    });
+  }
+
+  // ===== 9. PALETAS =====
+  const pal = extras.pallets;
+  if (pal && (pal.movements.length > 0 || pal.warehouse > 0 || pal.inCirculation > 0)) {
+    const wsP = wb.addWorksheet('Paletas');
+    setSheetBackground(wsP);
+    wsP.columns = [{ width: 28 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 14 }, { width: 28 }];
+    addTitle(wsP, '🪵 GESTIÓN DE PALETAS', 6);
+
+    // KPIs
+    styleHeaderRow(wsP.addRow(['Indicador', 'Cantidad', '', '', '', '']), 2);
+    [['Disponibles en almacén', pal.warehouse], ['En circulación (deudores)', pal.inCirculation], ['Clientes con saldo', pal.balances.filter(b => b.balance > 0).length]]
+      .forEach((r, i) => {
+        const row = wsP.addRow([r[0], r[1], '', '', '', '']);
+        for (let c = 1; c <= 2; c++) styleDataCell(row.getCell(c), i % 2 === 0);
+        row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+        row.getCell(2).font = { color: { argb: COLORS.orangeLight }, bold: true, size: 11, name: 'Arial' };
+        row.height = 22;
+      });
+    wsP.addRow([]);
+
+    // Balances por cliente
+    if (pal.balances.length > 0) {
+      const tb = wsP.addRow(['SALDOS POR CLIENTE']);
+      wsP.mergeCells(tb.number, 1, tb.number, 6);
+      tb.getCell(1).font = { bold: true, size: 12, color: { argb: COLORS.orange }, name: 'Arial' };
+      tb.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.bgDark } };
+      styleHeaderRow(wsP.addRow(['Cliente', 'Entregadas', 'Devueltas', 'Saldo', 'Movimientos', '']), 5);
+      pal.balances.forEach((b, i) => {
+        const row = wsP.addRow([b.client, b.delivered, b.received, b.balance, b.movements, '']);
+        for (let c = 1; c <= 5; c++) styleDataCell(row.getCell(c), i % 2 === 0);
+        row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+        const bal = row.getCell(4);
+        bal.font = { color: { argb: b.balance > 0 ? COLORS.red : COLORS.green }, bold: true, size: 10, name: 'Arial' };
+        row.height = 22;
+      });
+      wsP.addRow([]);
+    }
+
+    // Movimientos
+    if (pal.movements.length > 0) {
+      const tm = wsP.addRow(['HISTORIAL DE MOVIMIENTOS']);
+      wsP.mergeCells(tm.number, 1, tm.number, 6);
+      tm.getCell(1).font = { bold: true, size: 12, color: { argb: COLORS.orange }, name: 'Arial' };
+      tm.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.bgDark } };
+      styleHeaderRow(wsP.addRow(['Fecha', 'Cliente', 'Entregadas', 'Devueltas', 'Nota', 'Registrado por']), 6);
+      [...pal.movements].sort((a, b) => b.createdAt - a.createdAt).forEach((m, i) => {
+        const row = wsP.addRow([
+          m.date, m.client, m.delivered, m.received, m.note || '-',
+          `${m.userName} · ${new Date(m.createdAt).toLocaleString('es-VE')}`,
+        ]);
+        for (let c = 1; c <= 6; c++) styleDataCell(row.getCell(c), i % 2 === 0);
+        row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
+        row.getCell(5).alignment = { horizontal: 'left', vertical: 'middle' };
+        row.getCell(6).alignment = { horizontal: 'left', vertical: 'middle' };
+        row.height = 22;
+      });
+    }
+  }
+
   // Generate and download
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
