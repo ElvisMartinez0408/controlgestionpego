@@ -723,6 +723,205 @@ export function GYCReportButton() {
       }
 
 
+      // ===== INVENTARIOS ACTUALES =====
+      if (finishedStock.length || materialStock.length || customSupplies.length) {
+        y = ensureSpace(y, 20);
+        y = drawSectionTitle('INVENTARIOS ACTUALES', y);
+        const renderInvBlock = (title: string, rows: { name: string; value: string; sub?: string }[]) => {
+          if (!rows.length) return;
+          y = ensureSpace(y, 14);
+          setTextC(C.orangeLight);
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'bold');
+          doc.text(title, marginL, y);
+          y += 4;
+          drawCardBg(marginL, y, contentW, 7);
+          setFill(C.orange);
+          doc.rect(marginL, y, contentW, 6, 'F');
+          setTextC(C.white);
+          doc.setFontSize(6.5);
+          const ic = [marginL + 3, marginL + 90, marginL + 130];
+          doc.text('NOMBRE', ic[0], y + 4);
+          doc.text('CANTIDAD', ic[1], y + 4);
+          doc.text('DETALLE', ic[2], y + 4);
+          y += 8;
+          rows.forEach((r, i) => {
+            y = ensureSpace(y, 6);
+            if (i % 2 === 0) {
+              setFill(C.bgLight);
+              doc.rect(marginL, y - 3, contentW, 5.5, 'F');
+            }
+            setTextC(C.grayLight);
+            doc.setFontSize(6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(r.name, ic[0], y);
+            setTextC(C.orangeLight);
+            doc.setFont('helvetica', 'bold');
+            doc.text(r.value, ic[1], y);
+            setTextC(C.gray);
+            doc.setFont('helvetica', 'normal');
+            doc.text(r.sub || '', ic[2], y);
+            y += 5.5;
+          });
+          y += 3;
+        };
+        renderInvBlock('PRODUCTO TERMINADO (sacos)',
+          finishedStock.map(s => ({ name: s.product_name, value: `${Number(s.stock).toLocaleString()} sacos` })));
+        renderInvBlock('MATERIA PRIMA EN STOCK',
+          materialStock.map(s => ({ name: s.material_name, value: `${Number(s.stock).toLocaleString()} ${s.unit}` })));
+        renderInvBlock('INSUMOS PERSONALIZADOS',
+          customSupplies.map(s => ({ name: s.name, value: `${Number(s.current_quantity).toLocaleString()} ${s.unit}`, sub: `Alerta: ${Number(s.alert_threshold).toLocaleString()}` })));
+      }
+
+      // ===== PALETAS =====
+      if (warehouse > 0 || inCirculation > 0 || balances.length > 0 || movements.length > 0) {
+        y = ensureSpace(y, 20);
+        y = drawSectionTitle('GESTIÓN DE PALETAS', y);
+        const palKpiW = (contentW - 8) / 3;
+        const palKpis = [
+          { label: 'EN ALMACÉN', value: warehouse.toLocaleString() },
+          { label: 'EN CIRCULACIÓN', value: inCirculation.toLocaleString() },
+          { label: 'CLIENTES CON SALDO', value: String(balances.filter(b => b.balance > 0).length) },
+        ];
+        y = ensureSpace(y, 28);
+        palKpis.forEach((kpi, i) => {
+          const x = marginL + i * (palKpiW + 4);
+          drawCardBg(x, y, palKpiW, 22);
+          setFill(C.orange);
+          doc.rect(x, y, palKpiW, 1.2, 'F');
+          setTextC(C.gray);
+          doc.setFontSize(6.5);
+          doc.setFont('helvetica', 'bold');
+          doc.text(kpi.label, x + palKpiW / 2, y + 7, { align: 'center' });
+          setTextC(C.orange);
+          doc.setFontSize(14);
+          doc.setFont('helvetica', 'bold');
+          doc.text(kpi.value, x + palKpiW / 2, y + 16, { align: 'center' });
+        });
+        y += 28;
+
+        const topBal = balances.filter(b => b.balance > 0).slice(0, 10);
+        if (topBal.length > 0) {
+          y = ensureSpace(y, 14);
+          drawCardBg(marginL, y, contentW, 8);
+          setFill(C.orange);
+          doc.rect(marginL, y, contentW, 7, 'F');
+          setTextC(C.white);
+          doc.setFontSize(6.5);
+          doc.setFont('helvetica', 'bold');
+          const bc = [marginL + 3, marginL + 80, marginL + 105, marginL + 130];
+          doc.text('CLIENTE', bc[0], y + 5);
+          doc.text('ENTREGADAS', bc[1], y + 5);
+          doc.text('DEVUELTAS', bc[2], y + 5);
+          doc.text('SALDO', bc[3], y + 5);
+          y += 9;
+          topBal.forEach((b, i) => {
+            y = ensureSpace(y, 7);
+            if (i % 2 === 0) {
+              setFill(C.bgLight);
+              doc.rect(marginL, y - 3.5, contentW, 6.5, 'F');
+            }
+            setTextC(C.grayLight);
+            doc.setFontSize(6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(b.client.length > 32 ? b.client.substring(0, 32) + '…' : b.client, bc[0], y);
+            doc.text(String(b.delivered), bc[1], y);
+            doc.text(String(b.received), bc[2], y);
+            setTextC(b.balance > 0 ? C.red : C.green);
+            doc.setFont('helvetica', 'bold');
+            doc.text(String(b.balance), bc[3], y);
+            y += 6.5;
+          });
+          y += 4;
+        }
+
+        const monthMov = movements.filter(m => {
+          const d = new Date(m.date + 'T12:00:00');
+          return d.getMonth() === monthNow && d.getFullYear() === yearNow;
+        });
+        if (monthMov.length > 0) {
+          y = ensureSpace(y, 14);
+          drawCardBg(marginL, y, contentW, 8);
+          setFill(C.orange);
+          doc.rect(marginL, y, contentW, 7, 'F');
+          setTextC(C.white);
+          doc.setFontSize(6.5);
+          doc.setFont('helvetica', 'bold');
+          const mc = [marginL + 3, marginL + 28, marginL + 85, marginL + 110, marginL + 140];
+          doc.text('FECHA', mc[0], y + 5);
+          doc.text('CLIENTE', mc[1], y + 5);
+          doc.text('ENT.', mc[2], y + 5);
+          doc.text('DEV.', mc[3], y + 5);
+          doc.text('USUARIO', mc[4], y + 5);
+          y += 9;
+          monthMov.slice(0, 40).forEach((m, i) => {
+            y = ensureSpace(y, 7);
+            if (i % 2 === 0) {
+              setFill(C.bgLight);
+              doc.rect(marginL, y - 3.5, contentW, 6.5, 'F');
+            }
+            setTextC(C.grayLight);
+            doc.setFontSize(6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(m.date, mc[0], y);
+            doc.text(m.client.length > 26 ? m.client.substring(0, 26) + '…' : m.client, mc[1], y);
+            doc.text(String(m.delivered), mc[2], y);
+            doc.text(String(m.received), mc[3], y);
+            doc.text(m.userName, mc[4], y);
+            y += 6.5;
+          });
+        }
+      }
+
+      // ===== GUÍAS DEL MES =====
+      const allGuides = await listGuideMetadata();
+      const monthGuides = allGuides.filter(g => {
+        if (!g.date) return false;
+        const d = new Date(g.date + 'T12:00:00');
+        return d.getMonth() === monthNow && d.getFullYear() === yearNow;
+      });
+      if (monthGuides.length > 0) {
+        y = ensureSpace(y, 20);
+        y = drawSectionTitle('GUÍAS DESPACHADAS DEL MES', y);
+        drawCardBg(marginL, y, contentW, 8);
+        setFill(C.orange);
+        doc.rect(marginL, y, contentW, 7, 'F');
+        setTextC(C.white);
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'bold');
+        const gc = [marginL + 3, marginL + 28, marginL + 50, marginL + 100, marginL + 125, marginL + 145];
+        doc.text('Nº GUÍA', gc[0], y + 5);
+        doc.text('FECHA', gc[1], y + 5);
+        doc.text('CLIENTE', gc[2], y + 5);
+        doc.text('PRODUCTO', gc[3], y + 5);
+        doc.text('CANT.', gc[4], y + 5);
+        doc.text('CHOFER', gc[5], y + 5);
+        y += 9;
+        [...monthGuides].sort((a, b) => (b.date || '').localeCompare(a.date || '')).forEach((g, i) => {
+          y = ensureSpace(y, 7);
+          if (i % 2 === 0) {
+            setFill(C.bgLight);
+            doc.rect(marginL, y - 3.5, contentW, 6.5, 'F');
+          }
+          setTextC(C.grayLight);
+          doc.setFontSize(6);
+          doc.setFont('helvetica', 'normal');
+          doc.text(g.guideNumber, gc[0], y);
+          doc.text(g.date || '-', gc[1], y);
+          const cli = g.client || '-';
+          doc.text(cli.length > 24 ? cli.substring(0, 24) + '…' : cli, gc[2], y);
+          doc.text((g.productName || g.product || '-').substring(0, 12), gc[3], y);
+          setTextC(C.orangeLight);
+          doc.setFont('helvetica', 'bold');
+          doc.text(String(g.quantity ?? '-'), gc[4], y);
+          setTextC(C.grayLight);
+          doc.setFont('helvetica', 'normal');
+          const drv = g.driverName || '-';
+          doc.text(drv.length > 18 ? drv.substring(0, 18) + '…' : drv, gc[5], y);
+          y += 6.5;
+        });
+      }
+
       const pages = doc.getNumberOfPages();
       for (let i = 1; i <= pages; i++) {
         doc.setPage(i);
