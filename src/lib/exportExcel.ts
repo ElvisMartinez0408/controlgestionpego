@@ -150,14 +150,14 @@ export async function exportToExcel(
   const wsAtt = wb.addWorksheet('Asistencia');
   setSheetBackground(wsAtt);
   wsAtt.columns = [
-    { width: 24 }, { width: 20 }, { width: 16 }, { width: 14 }, { width: 14 }, { width: 14 },
+    { width: 24 }, { width: 20 }, { width: 16 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 28 },
   ];
 
-  addTitle(wsAtt, '👥 REGISTRO DE ASISTENCIA', 6);
+  addTitle(wsAtt, '👥 REGISTRO DE ASISTENCIA', 7);
 
-  const attHeaders = ['Empleado', 'Puesto', 'Fecha', 'Entrada', 'Salida', 'Estado'];
+  const attHeaders = ['Empleado', 'Puesto', 'Fecha', 'Entrada', 'Salida', 'Estado', 'Registrado por'];
   const attHeaderRow = wsAtt.addRow(attHeaders);
-  styleHeaderRow(attHeaderRow, 6);
+  styleHeaderRow(attHeaderRow, 7);
 
   // Sort by date desc, then employee name
   const sortedAtt = [...attRecords].sort((a, b) => b.date.localeCompare(a.date));
@@ -172,8 +172,9 @@ export async function exportToExcel(
       rec.check_in || '-',
       rec.check_out || '-',
       statusMap[rec.status] || rec.status,
+      formatAuditStamp(extras.audits?.attendance?.[rec.id]),
     ]);
-    for (let c = 1; c <= 6; c++) {
+    for (let c = 1; c <= 7; c++) {
       styleDataCell(row.getCell(c), i % 2 === 0);
     }
     row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
@@ -227,19 +228,26 @@ export async function exportToExcel(
   const wsProd = wb.addWorksheet('Producción');
   setSheetBackground(wsProd);
   wsProd.columns = [
-    { width: 16 }, { width: 24 }, { width: 16 }, { width: 14 }, { width: 28 },
+    { width: 16 }, { width: 24 }, { width: 16 }, { width: 16 }, { width: 24 }, { width: 28 },
   ];
 
-  addTitle(wsProd, '📦 REGISTRO DE PRODUCCIÓN', 5);
+  addTitle(wsProd, '📦 REGISTRO DE PRODUCCIÓN', 6);
 
-  const prodHeaders = ['Fecha', 'Producto', 'Cantidad (sacos)', 'Notas'];
+  const prodHeaders = ['Fecha', 'Producto', 'Cantidad (sacos)', 'Turno', 'Notas', 'Registrado por'];
   const prodHeaderRow = wsProd.addRow(prodHeaders);
-    styleHeaderRow(prodHeaderRow, 4);
+  styleHeaderRow(prodHeaderRow, 6);
 
   const sortedProd = [...prodRecords].sort((a, b) => b.date.localeCompare(a.date));
   sortedProd.forEach((rec, i) => {
-    const row = wsProd.addRow([rec.date, rec.product_name, rec.quantity, rec.notes || '-']);
-    for (let c = 1; c <= 4; c++) {
+    const row = wsProd.addRow([
+      rec.date,
+      rec.product_name,
+      rec.quantity,
+      rec.shift_status || 'Normal',
+      rec.notes || '-',
+      formatAuditStamp(extras.audits?.production?.[rec.id]),
+    ]);
+    for (let c = 1; c <= 6; c++) {
       styleDataCell(row.getCell(c), i % 2 === 0);
     }
     row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
@@ -297,19 +305,26 @@ export async function exportToExcel(
   const wsSales = wb.addWorksheet('Ventas');
   setSheetBackground(wsSales);
   wsSales.columns = [
-    { width: 16 }, { width: 24 }, { width: 16 }, { width: 22 }, { width: 28 },
+    { width: 16 }, { width: 24 }, { width: 16 }, { width: 22 }, { width: 22 }, { width: 28 },
   ];
 
-  addTitle(wsSales, '💰 REGISTRO DE VENTAS', 5);
+  addTitle(wsSales, '💰 REGISTRO DE VENTAS', 6);
 
-  const salesHeaders = ['Fecha', 'Producto', 'Cantidad', 'Cliente', 'Nº Guía'];
+  const salesHeaders = ['Fecha', 'Producto', 'Cantidad', 'Cliente', 'Nº Guía', 'Registrado por'];
   const salesHeaderRow = wsSales.addRow(salesHeaders);
-  styleHeaderRow(salesHeaderRow, 5);
+  styleHeaderRow(salesHeaderRow, 6);
 
   const sortedSales = [...saleRecords].sort((a, b) => b.date.localeCompare(a.date));
   sortedSales.forEach((rec, i) => {
-    const row = wsSales.addRow([rec.date, rec.product_name, rec.quantity, rec.client || '-', rec.notes || '-']);
-    for (let c = 1; c <= 5; c++) {
+    const row = wsSales.addRow([
+      rec.date,
+      rec.product_name,
+      rec.quantity,
+      rec.client || '-',
+      rec.notes || '-',
+      formatAuditStamp(extras.audits?.sales?.[rec.id]),
+    ]);
+    for (let c = 1; c <= 6; c++) {
       styleDataCell(row.getCell(c), i % 2 === 0);
     }
     row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
