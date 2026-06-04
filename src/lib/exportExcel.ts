@@ -3,6 +3,30 @@ import { saveAs } from 'file-saver';
 import type { Employee, AttendanceRecord } from '@/hooks/useAttendance';
 import type { ProductionRecord } from '@/hooks/useProduction';
 import type { SaleRecord } from '@/hooks/useSales';
+import type { RawMaterialRecord } from '@/hooks/useRawMaterials';
+import type { FinishedStockRecord } from '@/hooks/useFinishedStock';
+import type { MaterialStockRow } from '@/hooks/useMaterialStock';
+import type { CustomSupply } from '@/hooks/useCustomSupplies';
+import type { GuideMetadata } from '@/lib/guidesDb';
+import type { AuditEntry } from '@/lib/audit';
+import { formatAuditStamp } from '@/lib/audit';
+import type { ClientBalance, PalletMovement } from '@/lib/palletsDb';
+
+export interface ExtrasPayload {
+  rawRecords?: RawMaterialRecord[];
+  finishedStock?: FinishedStockRecord[];
+  materialStock?: MaterialStockRow[];
+  customSupplies?: CustomSupply[];
+  pallets?: { warehouse: number; inCirculation: number; balances: ClientBalance[]; movements: PalletMovement[] };
+  guides?: GuideMetadata[];
+  audits?: {
+    sales?: Record<string, AuditEntry>;
+    production?: Record<string, AuditEntry>;
+    attendance?: Record<string, AuditEntry>;
+    raw_materials?: Record<string, AuditEntry>;
+    guides?: Record<string, AuditEntry>;
+  };
+}
 
 // Brand colors matching the app's dark orange theme
 const COLORS = {
