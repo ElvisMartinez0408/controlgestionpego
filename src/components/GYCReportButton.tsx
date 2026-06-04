@@ -5,6 +5,11 @@ import { useAttendance } from '@/hooks/useAttendance';
 import { useProduction } from '@/hooks/useProduction';
 import { useSales } from '@/hooks/useSales';
 import { useRawMaterials } from '@/hooks/useRawMaterials';
+import { useFinishedStock } from '@/hooks/useFinishedStock';
+import { useMaterialStock } from '@/hooks/useMaterialStock';
+import { useCustomSupplies } from '@/hooks/useCustomSupplies';
+import { usePallets } from '@/hooks/usePallets';
+import { listGuideMetadata } from '@/lib/guidesDb';
 import { useRole } from '@/contexts/RoleContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -32,6 +37,10 @@ export function GYCReportButton() {
   const { records: prodRecords } = useProduction();
   const { records: saleRecords } = useSales();
   const { records: rawMatRecords } = useRawMaterials();
+  const { items: finishedStock } = useFinishedStock();
+  const { stocks: materialStock } = useMaterialStock();
+  const { supplies: customSupplies } = useCustomSupplies();
+  const { warehouse, inCirculation, balances, movements } = usePallets();
 
   if (!isAdmin) return null;
 
