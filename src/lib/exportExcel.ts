@@ -95,6 +95,7 @@ export async function exportToExcel(
   attRecords: AttendanceRecord[],
   prodRecords: ProductionRecord[],
   saleRecords: SaleRecord[],
+  extras: ExtrasPayload = {},
 ) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Control de Gestión';
