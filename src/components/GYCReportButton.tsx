@@ -124,7 +124,7 @@ export function GYCReportButton() {
       setTextC(C.grayLight);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Control de Gestión — ${monthName}`, W / 2, 32, { align: 'center' });
+      doc.text(`PegoFlex — ${monthName}`, W / 2, 32, { align: 'center' });
 
       setTextC(C.gray);
       doc.setFontSize(8);
@@ -934,7 +934,7 @@ export function GYCReportButton() {
         setTextC(C.gray);
         doc.setFontSize(6);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Control de Gestión — Reporte GYC — ${monthName}`, marginL, H - 4);
+        doc.text(`PegoFlex — Reporte GYC — ${monthName}`, marginL, H - 4);
 
         setTextC(C.orangeLight);
         doc.setFont('helvetica', 'bold');

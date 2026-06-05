@@ -21,7 +21,7 @@ export function AuthGate() {
           <div className="w-16 h-16 rounded-2xl gradient-orange flex items-center justify-center mx-auto">
             <Lock className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Control de Gestión GYC</h1>
+          <h1 className="text-2xl font-bold text-foreground">PegoFlex</h1>
           <p className="text-sm text-muted-foreground">
             {mode === 'login' ? 'Ingresa con tu código y contraseña' : 'Regístrate con un código de invitación'}
           </p>

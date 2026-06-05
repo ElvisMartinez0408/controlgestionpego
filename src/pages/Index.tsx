@@ -55,7 +55,7 @@ function IndexContent() {
                   <SheetHeader className="p-4 border-b border-border">
                     <SheetTitle className="flex items-center gap-2 text-foreground">
                       <img src={logoImg} alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
-                      Control de Gestión
+                      PegoFlex
                     </SheetTitle>
                   </SheetHeader>
                   <nav className="flex flex-col gap-1 p-3">
@@ -78,7 +78,7 @@ function IndexContent() {
               </Sheet>
               <img src={logoImg} alt="Logo" className="w-10 h-10 rounded-lg object-cover" />
               <div>
-                <h1 className="text-xl font-bold text-foreground">Control de Gestión</h1>
+                <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight">PegoFlex</h1>
                 <p className="text-xs text-muted-foreground">
                   Usuario: <span className="text-foreground font-semibold">{userName}</span>
                   <span className="mx-1.5">|</span>
