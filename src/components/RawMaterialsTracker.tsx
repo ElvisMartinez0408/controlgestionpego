@@ -114,12 +114,13 @@ export function RawMaterialsTracker() {
 
       <PalletsDashboard open={palletsOpen} onOpenChange={setPalletsOpen} />
 
-      {/* Finished product stock cards (manual edit) */}
+      {/* 1. Stock de producto terminado */}
       <FinishedStockCards />
 
-      {/* Capacity projection */}
+      {/* 2. Proyección de capacidad */}
       <CapacityProjectionCard />
 
+      {/* 3. Nueva entrada de material */}
       {isAdmin && (
         <div className="glass-card p-4 space-y-3">
           <h3 className="font-semibold text-foreground flex items-center gap-2">
@@ -242,10 +243,16 @@ export function RawMaterialsTracker() {
         </div>
       )}
 
-      {/* Bag entry form */}
+      {/* 4. Entrada de bolsas vacías */}
       <BagEntryForm />
 
-      {/* Historical Table */}
+      {/* 5. Insumos personalizados */}
+      <CustomSuppliesSection />
+
+      {/* 6. Stock actual por material */}
+      <MaterialStatusCards records={records} />
+
+      {/* 7. Historial de entradas */}
       <div className="glass-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h3 className="font-semibold text-foreground">Historial de Entradas</h3>
@@ -298,12 +305,6 @@ export function RawMaterialsTracker() {
           </div>
         )}
       </div>
-
-      {/* Custom supplies with alert thresholds */}
-      <CustomSuppliesSection />
-
-      {/* Material Status Cards */}
-      <MaterialStatusCards records={records} />
     </div>
   );
 }
