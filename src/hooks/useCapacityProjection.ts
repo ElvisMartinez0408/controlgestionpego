@@ -9,6 +9,8 @@ export interface CapacityResult {
   limitingMaterial: string | null;
 }
 
+const PRODUCT_ORDER = ['Pego Gris', 'Pego Blanco', 'Pego Premium'];
+
 /**
  * For each product, compute how many sacks can be produced before the
  * first material runs out, given current `material_stock` levels.
@@ -24,7 +26,13 @@ export function useCapacityProjection() {
     return () => window.removeEventListener('recipes-updated', load);
   }, []);
 
-  const projections: CapacityResult[] = recipes.map(({ product, ingredients }) => {
+  const orderedRecipes = [...recipes].sort((a, b) => {
+    const ai = PRODUCT_ORDER.indexOf(a.product);
+    const bi = PRODUCT_ORDER.indexOf(b.product);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  });
+
+  const projections: CapacityResult[] = orderedRecipes.map(({ product, ingredients }) => {
     let min = Infinity;
     let limiting: string | null = null;
     for (const r of ingredients) {
