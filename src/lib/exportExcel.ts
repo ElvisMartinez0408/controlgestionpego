@@ -98,7 +98,7 @@ export async function exportToExcel(
   extras: ExtrasPayload = {},
 ) {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Control de Gestión';
+  wb.creator = 'PegoFlex';
   wb.created = new Date();
 
   const now = new Date();
@@ -576,6 +576,6 @@ export async function exportToExcel(
   // Generate and download
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const fileName = `Control_Gestion_${year}_${String(month + 1).padStart(2, '0')}.xlsx`;
+  const fileName = `PegoFlex_${year}_${String(month + 1).padStart(2, '0')}.xlsx`;
   saveAs(blob, fileName);
 }
