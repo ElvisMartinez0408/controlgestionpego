@@ -8,19 +8,6 @@ interface Props {
   records: RawMaterialRecord[];
 }
 
-const MATERIAL_ICONS: Record<string, string> = {
-  'Cemento Gris': '🏗️',
-  'Arena': '🏖️',
-  'Cemento Blanco': '⬜',
-  'Celulosa': '📦',
-  'Redispersable': '🧪',
-  'Silicón': '💧',
-  'Bobina de Envoplast': '🔄',
-  'Bolsa Gris': '🛍️',
-  'Bolsa Blanco': '🛍️',
-  'Bolsa Premium': '🛍️',
-};
-
 export function MaterialStatusCards({ records }: Props) {
   const { getStock, stocks } = useMaterialStock();
   const getLastArrival = (material: string) => {
@@ -36,7 +23,7 @@ export function MaterialStatusCards({ records }: Props) {
         <Package className="w-4 h-4 text-primary" />
         Stock actual por material
       </h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {[...MATERIALS, ...BAG_TYPES].map(mat => {
           const last = getLastArrival(mat);
           const liveStock = getStock(mat);
@@ -48,26 +35,24 @@ export function MaterialStatusCards({ records }: Props) {
           return (
             <div
               key={mat}
-              className="group relative overflow-hidden rounded-lg border border-border/40 bg-card/60 backdrop-blur-sm p-3 transition-all hover:border-primary/30 hover:shadow-[0_0_12px_hsl(var(--primary)/0.08)]"
+              className="group relative overflow-hidden rounded-lg border border-border/50 bg-card/70 backdrop-blur-sm px-4 py-3 transition-all hover:border-primary/40 hover:shadow-[0_0_12px_hsl(var(--primary)/0.1)]"
             >
-              {/* Subtle top accent */}
-              <div className={`absolute top-0 left-0 right-0 h-[2px] transition-all ${last ? 'bg-primary/60 group-hover:bg-primary' : 'bg-muted-foreground/20'}`} />
-
-              <div className="flex flex-col items-center text-center gap-1.5">
-                <span className="text-lg">{MATERIAL_ICONS[mat] || '📋'}</span>
-                <span className="text-[10px] font-medium text-foreground leading-tight line-clamp-2">{mat}</span>
-
-                <span className="text-sm text-primary font-bold leading-tight">
-                  {liveStock.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                </span>
-                <span className="text-[9px] text-muted-foreground -mt-1">{stockUnit}</span>
-                {last ? (
-                  <span className="text-[9px] text-muted-foreground/80 leading-tight">
-                    Últ: {daysAgo}
-                  </span>
-                ) : (
-                  <span className="text-[9px] text-muted-foreground/60 italic">Sin entradas</span>
-                )}
+              <div className={`absolute left-0 top-0 bottom-0 w-[3px] transition-all ${last ? 'bg-primary/70 group-hover:bg-primary' : 'bg-muted-foreground/20'}`} />
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground truncate">{mat}</p>
+                  {last ? (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Última entrada: {daysAgo}</p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground/70 italic mt-0.5">Sin entradas</p>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-2xl font-bold text-primary leading-none">
+                    {liveStock.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">{stockUnit}</p>
+                </div>
               </div>
             </div>
           );
