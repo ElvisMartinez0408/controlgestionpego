@@ -124,6 +124,45 @@ export type Database = {
         }
         Relationships: []
       }
+      invitation_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          expires_at: string | null
+          id: string
+          role: string
+          used: boolean
+          used_at: string | null
+          used_by_name: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          expires_at?: string | null
+          id?: string
+          role: string
+          used?: boolean
+          used_at?: string | null
+          used_by_name?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          expires_at?: string | null
+          id?: string
+          role?: string
+          used?: boolean
+          used_at?: string | null
+          used_by_name?: string | null
+        }
+        Relationships: []
+      }
       material_stock: {
         Row: {
           id: string
