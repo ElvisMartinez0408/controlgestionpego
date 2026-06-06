@@ -82,6 +82,8 @@ export function UsersAdminPanel() {
         </div>
       </div>
 
+      <InvitationCodesPanel />
+
       {/* New user form */}
       <div className="glass-card p-4 space-y-3">
         <h4 className="font-semibold text-foreground flex items-center gap-2 text-sm">
