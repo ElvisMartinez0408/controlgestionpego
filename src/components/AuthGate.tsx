@@ -120,8 +120,8 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
       // Strict validation: must exist, be enabled, not used, not expired.
       // The role is decided by the admin who issued the code — NOT by the user.
       const result = await redeemInvitationCode(code.trim(), name.trim());
-      if (!result.ok) {
-        const reason = result.reason;
+      if (result.ok !== true) {
+        const reason = (result as { reason: string }).reason;
         if (reason === 'NOT_FOUND') return setError('Código de invitación inválido');
         if (reason === 'USED') return setError('Código de invitación ya utilizado');
         if (reason === 'DISABLED') return setError('Código deshabilitado por el administrador');
