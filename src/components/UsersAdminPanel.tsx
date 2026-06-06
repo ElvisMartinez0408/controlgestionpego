@@ -3,8 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Plus, Eye, EyeOff, Copy, Sparkles, Trash2, Shield, KeyRound, Save } from 'lucide-react';
-import { listUsers, createUser, updateUser, deleteUser, generateInviteCode, ROLE_LABEL, type UserProfile, type AppRole } from '@/lib/authDb';
+import { Users, Plus, Eye, EyeOff, Copy, Sparkles, Trash2, Shield, KeyRound, Ticket, CheckCircle2, XCircle } from 'lucide-react';
+import { listUsers, createUser, updateUser, deleteUser, generateInviteCode, ROLE_LABEL, getCurrentUser, type UserProfile, type AppRole } from '@/lib/authDb';
+import {
+  listInvitationCodes,
+  createInvitationCode,
+  deleteInvitationCode,
+  setInvitationCodeEnabled,
+  generateCode,
+  type InvitationCode,
+} from '@/lib/invitationCodes';
 import { toast } from 'sonner';
 
 export function UsersAdminPanel() {
