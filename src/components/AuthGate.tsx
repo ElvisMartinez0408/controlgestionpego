@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ShieldCheck, Lock, UserPlus, LogIn, Eye, EyeOff, KeyRound, Copy, Sparkles } from 'lucide-react';
+import { ShieldCheck, Lock, UserPlus, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
-import { createUser, detectRoleFromCode, generateInviteCode, ROLE_LABEL, type AppRole } from '@/lib/authDb';
+import { createUser, detectRoleFromCode, ROLE_LABEL, type AppRole } from '@/lib/authDb';
+import { redeemInvitationCode } from '@/lib/invitationCodes';
 import { toast } from 'sonner';
 
 type Mode = 'login' | 'signup';
@@ -102,29 +103,38 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
   const [code, setCode] = useState('');
   const [pass, setPass] = useState('');
   const [pass2, setPass2] = useState('');
-  const [detectedRole, setDetectedRole] = useState<AppRole | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (code.trim().length >= 6) setDetectedRole(detectRoleFromCode(code));
-    else setDetectedRole(null);
-  }, [code]);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (!name.trim()) return setError('Ingresa tu nombre');
     if (!/^\d{10}$/.test(code.trim())) return setError('El código debe tener 10 dígitos');
     if (pass.length < 4) return setError('La contraseña debe tener al menos 4 caracteres');
     if (pass !== pass2) return setError('Las contraseñas no coinciden');
-    // If code already exists in DB, it means a user is already registered there
-    if (detectedRole) return setError('Ese código ya fue usado. Pide otro al administrador.');
+    if (detectRoleFromCode(code)) return setError('Ese código ya fue usado en este dispositivo.');
+
+    setSubmitting(true);
     try {
-      // Self-signup defaults to viewer; admin must promote to supervisor/admin via panel
-      createUser({ name: name.trim(), inviteCode: code.trim(), password: pass, role: 'viewer' });
-      toast.success('Usuario creado. Ya puedes iniciar sesión.');
+      // Strict validation: must exist, be enabled, not used, not expired.
+      // The role is decided by the admin who issued the code — NOT by the user.
+      const result = await redeemInvitationCode(code.trim(), name.trim());
+      if (result.ok !== true) {
+        const reason = (result as { reason: string }).reason;
+        if (reason === 'NOT_FOUND') return setError('Código de invitación inválido');
+        if (reason === 'USED') return setError('Código de invitación ya utilizado');
+        if (reason === 'DISABLED') return setError('Código deshabilitado por el administrador');
+        if (reason === 'EXPIRED') return setError('Código de invitación expirado');
+        return setError('Código inválido');
+      }
+      createUser({ name: name.trim(), inviteCode: code.trim(), password: pass, role: result.role });
+      toast.success(`Cuenta creada como ${ROLE_LABEL[result.role]}. Ya puedes iniciar sesión.`);
       onSwitch();
     } catch (err: any) {
       setError(err.message || 'Error al registrar');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -137,9 +147,7 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
       <div>
         <label className="text-xs text-muted-foreground mb-1 block">Código de invitación (10 dígitos)</label>
         <Input value={code} onChange={e => { setCode(e.target.value.replace(/\D/g, '').slice(0, 10)); setError(null); }} placeholder="0000000000" className="bg-secondary border-border tracking-widest" />
-        {detectedRole && (
-          <p className="text-[11px] mt-1 text-destructive">⚠ Ese código ya está registrado como {ROLE_LABEL[detectedRole]}</p>
-        )}
+        <p className="text-[11px] mt-1 text-muted-foreground">El rol será asignado automáticamente según el código emitido por el administrador.</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -152,11 +160,11 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
         </div>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" className="w-full gradient-orange text-primary-foreground hover:opacity-90">
-        <UserPlus className="w-4 h-4 mr-2" /> Crear cuenta
+      <Button type="submit" disabled={submitting} className="w-full gradient-orange text-primary-foreground hover:opacity-90">
+        <UserPlus className="w-4 h-4 mr-2" /> {submitting ? 'Validando…' : 'Crear cuenta'}
       </Button>
       <p className="text-[11px] text-muted-foreground text-center">
-        Las cuentas auto-registradas inician como <span className="text-foreground font-semibold">Visitante</span> hasta que un admin las promueva.
+        Solo se aceptan códigos emitidos por un administrador. Cada código es de un solo uso.
       </p>
     </form>
   );

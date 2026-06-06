@@ -3,8 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Plus, Eye, EyeOff, Copy, Sparkles, Trash2, Shield, KeyRound, Save } from 'lucide-react';
-import { listUsers, createUser, updateUser, deleteUser, generateInviteCode, ROLE_LABEL, type UserProfile, type AppRole } from '@/lib/authDb';
+import { Users, Plus, Eye, EyeOff, Copy, Sparkles, Trash2, Shield, KeyRound, Ticket, CheckCircle2, XCircle } from 'lucide-react';
+import { listUsers, createUser, updateUser, deleteUser, generateInviteCode, ROLE_LABEL, getCurrentUser, type UserProfile, type AppRole } from '@/lib/authDb';
+import {
+  listInvitationCodes,
+  createInvitationCode,
+  deleteInvitationCode,
+  setInvitationCodeEnabled,
+  generateCode,
+  type InvitationCode,
+} from '@/lib/invitationCodes';
 import { toast } from 'sonner';
 
 export function UsersAdminPanel() {
@@ -73,6 +81,8 @@ export function UsersAdminPanel() {
           <p className="text-sm text-muted-foreground">Crea códigos de invitación, asigna roles y bloquea cuentas en cualquier momento.</p>
         </div>
       </div>
+
+      <InvitationCodesPanel />
 
       {/* New user form */}
       <div className="glass-card p-4 space-y-3">
@@ -175,6 +185,163 @@ export function UsersAdminPanel() {
       <p className="text-[11px] text-muted-foreground">
         El <strong>Administrador Maestro</strong> está protegido: no puede ser desactivado ni eliminado, y mantiene siempre el código <code className="font-mono">3010285904</code>.
       </p>
+    </div>
+  );
+}
+
+function InvitationCodesPanel() {
+  const [codes, setCodes] = useState<InvitationCode[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [code, setCode] = useState('');
+  const [role, setRole] = useState<AppRole>('viewer');
+
+  const refresh = async () => {
+    try {
+      setLoading(true);
+      setCodes(await listInvitationCodes());
+    } catch (e: any) {
+      toast.error(e.message || 'No se pudieron cargar los códigos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const handleGenerate = () => setCode(generateCode());
+  const handleCopy = (c: string) => { navigator.clipboard.writeText(c); toast.success('Código copiado'); };
+
+  const handleCreate = async () => {
+    if (!/^\d{10}$/.test(code.trim())) return toast.error('El código debe tener 10 dígitos');
+    try {
+      const current = getCurrentUser();
+      await createInvitationCode({ code: code.trim(), role, createdBy: current?.name });
+      toast.success(`Código emitido como ${ROLE_LABEL[role]}`);
+      setCode('');
+      refresh();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const handleToggle = async (c: InvitationCode) => {
+    try {
+      await setInvitationCodeEnabled(c.id, !c.enabled);
+      refresh();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const handleDelete = async (c: InvitationCode) => {
+    if (!confirm(`¿Eliminar el código ${c.code}?`)) return;
+    try {
+      await deleteInvitationCode(c.id);
+      toast.success('Código eliminado');
+      refresh();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+          <Ticket className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-foreground">Códigos de Invitación</h3>
+          <p className="text-sm text-muted-foreground">Emite códigos vinculados a un rol específico. Cada código es de un solo uso y se valida en la nube desde cualquier dispositivo.</p>
+        </div>
+      </div>
+
+      <div className="glass-card p-4 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="flex gap-1 sm:col-span-1">
+            <Input
+              value={code}
+              onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="Código 10 díg."
+              className="bg-secondary border-border tracking-widest"
+            />
+            <Button type="button" size="icon" variant="outline" onClick={handleGenerate} title="Generar aleatorio">
+              <Sparkles className="w-4 h-4" />
+            </Button>
+          </div>
+          <select
+            value={role}
+            onChange={e => setRole(e.target.value as AppRole)}
+            className="h-10 rounded-md border border-border bg-secondary px-3 text-sm text-foreground"
+          >
+            <option value="viewer">Visitante (solo lectura)</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="admin">Administrador</option>
+          </select>
+          <Button onClick={handleCreate} className="gradient-orange text-primary-foreground">
+            <Plus className="w-4 h-4 mr-1" /> Emitir código
+          </Button>
+        </div>
+      </div>
+
+      <div className="glass-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border">
+              <TableHead className="text-primary">Código</TableHead>
+              <TableHead>Rol asignado</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Usado por</TableHead>
+              <TableHead>Emitido por</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading && codes.length === 0 && (
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-4">Cargando…</TableCell></TableRow>
+            )}
+            {!loading && codes.length === 0 && (
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-4">No hay códigos emitidos. Genera uno arriba.</TableCell></TableRow>
+            )}
+            {codes.map(c => (
+              <TableRow key={c.id} className="border-border">
+                <TableCell className="font-mono text-sm">
+                  <div className="flex items-center gap-1">
+                    <span>{c.code}</span>
+                    <button onClick={() => handleCopy(c.code)} className="text-muted-foreground hover:text-primary" title="Copiar">
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">{ROLE_LABEL[c.role]}</span>
+                </TableCell>
+                <TableCell>
+                  {c.used ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><XCircle className="w-3.5 h-3.5" /> Usado</span>
+                  ) : !c.enabled ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-destructive"><XCircle className="w-3.5 h-3.5" /> Deshabilitado</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs text-primary"><CheckCircle2 className="w-3.5 h-3.5" /> Disponible</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {c.used_by_name ?? '—'}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {c.created_by ?? '—'}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    {!c.used && (
+                      <Button size="sm" variant="ghost" onClick={() => handleToggle(c)} title={c.enabled ? 'Deshabilitar' : 'Habilitar'}>
+                        {c.enabled ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => handleDelete(c)} className="text-muted-foreground hover:text-destructive" title="Eliminar">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
