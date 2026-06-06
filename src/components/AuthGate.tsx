@@ -121,10 +121,11 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
       // The role is decided by the admin who issued the code — NOT by the user.
       const result = await redeemInvitationCode(code.trim(), name.trim());
       if (!result.ok) {
-        if (result.reason === 'NOT_FOUND') return setError('Código de invitación inválido');
-        if (result.reason === 'USED') return setError('Código de invitación ya utilizado');
-        if (result.reason === 'DISABLED') return setError('Código deshabilitado por el administrador');
-        if (result.reason === 'EXPIRED') return setError('Código de invitación expirado');
+        const reason = result.reason;
+        if (reason === 'NOT_FOUND') return setError('Código de invitación inválido');
+        if (reason === 'USED') return setError('Código de invitación ya utilizado');
+        if (reason === 'DISABLED') return setError('Código deshabilitado por el administrador');
+        if (reason === 'EXPIRED') return setError('Código de invitación expirado');
         return setError('Código inválido');
       }
       createUser({ name: name.trim(), inviteCode: code.trim(), password: pass, role: result.role });
