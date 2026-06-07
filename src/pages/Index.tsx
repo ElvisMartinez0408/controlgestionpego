@@ -16,6 +16,7 @@ import { RoleProvider, useRole } from '@/contexts/RoleContext';
 import { LayoutDashboard, Users, Package, DollarSign, FileText, Warehouse, LogOut, Sun, Moon, Settings, Menu } from 'lucide-react';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { AlertsBell } from '@/components/AlertsBell';
+import { NotesDrawer } from '@/components/NotesDrawer';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -151,6 +152,7 @@ function IndexContent() {
         {activeTab === 'guides' && <GuideRegistry />}
         {activeTab === 'settings' && isAdmin && <SettingsPanel />}
       </main>
+      <NotesDrawer />
     </div>
   );
 }
