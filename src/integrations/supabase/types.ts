@@ -187,6 +187,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notes: {
+        Row: {
+          color: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          pinned: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          pinned?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          pinned?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       production_records: {
         Row: {
           created_at: string
