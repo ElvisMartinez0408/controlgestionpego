@@ -22,7 +22,7 @@ export function ProductionTracker() {
   const { isAdmin, canCreate, canDelete } = useRole();
   const audits = useAudits('production');
   const { stocks: materialStocks, getStock, adjustMany } = useMaterialStock();
-  const { getStock: getFinished, updateStock: updateFinished } = useFinishedStock();
+  const { getStock: getFinished, adjustStock: adjustFinished } = useFinishedStock();
   const [productName, setProductName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
@@ -117,12 +117,13 @@ export function ProductionTracker() {
 
     // Subtract raw materials & bags
     await adjustMany(merged.map(c => ({ material: c.material, qty: -c.qty })));
-    // Add to finished product stock
-    const currentFinished = getFinished(productName);
-    await updateFinished(productName, currentFinished + sacks);
+    // Atomically add to finished product stock (creates the row if missing)
+    const product = productName.trim();
+    await adjustFinished(product, sacks);
+    const newFinished = getFinished(product) + sacks;
 
-    toast.success(`+${sacks} sacos de ${productName}`, {
-      description: `Stock terminado: ${(currentFinished + sacks).toLocaleString()} sacos`,
+    toast.success(`+${sacks} sacos de ${product}`, {
+      description: `Stock terminado: ${newFinished.toLocaleString()} sacos`,
     });
 
     setProductName('');
@@ -145,8 +146,7 @@ export function ProductionTracker() {
       if (consumption.length > 0) {
         await adjustMany(consumption.map(c => ({ material: c.material, qty: c.qty })));
       }
-      const finished = getFinished(record.product_name);
-      await updateFinished(record.product_name, Math.max(0, finished - record.quantity));
+      await adjustFinished(record.product_name, -record.quantity);
       await deleteProductionSnapshot(id);
       await deleteDefectiveBagsByProduction(id);
     }
