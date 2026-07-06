@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, ShieldAlert, DatabaseBackup, AlertTriangle } from 'lucide-react';
-import { exportBackup, importBackup, readBackupFile, type BackupPayload } from '@/lib/backup';
+import { Download, Upload, ShieldAlert, DatabaseBackup, AlertTriangle, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { exportBackup, importBackup, readBackupFile, validateBackupPayload, type BackupPayload, type RestoreLogEntry, type RestoreResult } from '@/lib/backup';
 import { PinConfirmDialog } from '@/components/PinConfirmDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -12,6 +12,8 @@ export function BackupPanel() {
   const [pendingPayload, setPendingPayload] = useState<BackupPayload | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  const [result, setResult] = useState<RestoreResult | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const onFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -20,7 +22,13 @@ export function BackupPanel() {
     if (!f) return;
     try {
       const payload = await readBackupFile(f);
-      if (payload.app !== 'GYC') { toast.error('Archivo no válido'); return; }
+      const v = validateBackupPayload(payload);
+      if (!v.ok) {
+        setResult({ ok: false, totals: { inserted: 0, failed: 0 }, log: v.errors.map(e => ({ scope: 'validation' as const, target: 'payload', level: 'error' as const, message: e })) });
+        setLogOpen(true);
+        toast.error('El archivo no cumple con la estructura esperada');
+        return;
+      }
       setPendingPayload(payload);
       setImportPinOpen(true);
     } catch {
@@ -47,15 +55,27 @@ export function BackupPanel() {
     if (!pendingPayload) return;
     setBusy(true);
     try {
-      await importBackup(pendingPayload);
-      toast.success('Respaldo cargado · actualizando sistema…');
+      const res = await importBackup(pendingPayload);
+      setResult(res);
       setConfirmOpen(false);
       setPendingPayload(null);
-      setTimeout(() => window.location.reload(), 800);
+      setLogOpen(true);
+      if (res.ok) {
+        toast.success(`Respaldo cargado · ${res.totals.inserted} registros`);
+      } else {
+        toast.error(`Restauración finalizó con ${res.totals.failed} errores · revisa el log`);
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Error al cargar respaldo');
     } finally { setBusy(false); }
   };
+
+  const reloadNow = () => window.location.reload();
+
+  const levelIcon = (lvl: RestoreLogEntry['level']) =>
+    lvl === 'error' ? <XCircle className="w-4 h-4 text-destructive shrink-0" /> :
+    lvl === 'warn' ? <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0" /> :
+    <Info className="w-4 h-4 text-primary shrink-0" />;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -144,6 +164,38 @@ export function BackupPanel() {
             <Button variant="destructive" onClick={handleImportConfirmed} disabled={busy}>
               {busy ? 'Restaurando…' : 'Sí, reemplazar todo'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Restore log */}
+      <Dialog open={logOpen} onOpenChange={setLogOpen}>
+        <DialogContent className="bg-card border-border max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              {result?.ok ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-destructive" />}
+              Registro de Restauración
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {result ? `${result.totals.inserted} registros importados · ${result.totals.failed} con error` : 'Sin resultados'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto space-y-1.5 pr-1">
+            {result?.log.map((l, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs rounded border border-border bg-secondary/40 px-2.5 py-2">
+                {levelIcon(l.level)}
+                <div className="flex-1 min-w-0">
+                  <p className="text-foreground"><span className="font-semibold uppercase text-[10px] tracking-wide text-muted-foreground mr-1.5">{l.scope}·{l.target}</span>{l.message}</p>
+                  {l.detail && <p className="text-[10px] text-muted-foreground mt-0.5 font-mono break-words">{l.detail}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setLogOpen(false)}>Cerrar</Button>
+            {result?.ok && (
+              <Button onClick={reloadNow} className="gradient-orange text-primary-foreground">Recargar sistema</Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

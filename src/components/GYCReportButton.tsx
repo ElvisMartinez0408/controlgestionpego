@@ -1,952 +1,348 @@
 import { useState } from 'react';
 import { FileDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAttendance } from '@/hooks/useAttendance';
 import { useProduction } from '@/hooks/useProduction';
 import { useSales } from '@/hooks/useSales';
 import { useRawMaterials } from '@/hooks/useRawMaterials';
 import { useFinishedStock } from '@/hooks/useFinishedStock';
 import { useMaterialStock } from '@/hooks/useMaterialStock';
-import { useCustomSupplies } from '@/hooks/useCustomSupplies';
 import { usePallets } from '@/hooks/usePallets';
-import { listGuideMetadata } from '@/lib/guidesDb';
 import { useRole } from '@/contexts/RoleContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-// Color palette
+// Light, professional palette
 const C = {
-  bg: [26, 29, 35] as const,
-  bgLight: [35, 39, 47] as const,
-  bgCard: [42, 46, 56] as const,
-  orange: [249, 115, 22] as const,
-  orangeLight: [251, 146, 60] as const,
-  white: [255, 255, 255] as const,
-  gray: [156, 163, 175] as const,
-  grayLight: [209, 213, 219] as const,
-  grayDark: [75, 85, 99] as const,
-  green: [34, 197, 94] as const,
-  red: [239, 68, 68] as const,
+  ink:      [30, 34, 45] as const,     // primary text
+  mute:     [110, 118, 132] as const,  // secondary text
+  faint:    [170, 178, 190] as const,  // hairline text
+  line:     [225, 230, 238] as const,  // borders / gridlines
+  paper:    [255, 255, 255] as const,  // background
+  band:     [248, 250, 253] as const,  // section band bg
+  cardBg:   [252, 253, 255] as const,  // card bg
+  accent:   [234, 88, 12] as const,    // PegoFlex orange
+  accent2:  [253, 186, 116] as const,  // orange soft
+  ok:       [22, 163, 74] as const,
+  warn:     [202, 138, 4] as const,
+  danger:   [220, 38, 38] as const,
 };
 
 export function GYCReportButton() {
   const { isAdmin } = useRole();
   const [generating, setGenerating] = useState(false);
-  const { employees, records: attRecords } = useAttendance();
   const { records: prodRecords } = useProduction();
   const { records: saleRecords } = useSales();
-  const { records: rawMatRecords } = useRawMaterials();
+  const { records: rawRecords } = useRawMaterials();
   const { items: finishedStock } = useFinishedStock();
   const { stocks: materialStock } = useMaterialStock();
-  const { supplies: customSupplies } = useCustomSupplies();
-  const { warehouse, inCirculation, balances, movements } = usePallets();
+  const { warehouse, inCirculation, balances } = usePallets();
 
   if (!isAdmin) return null;
 
-  const generatePDF = async () => {
+  const generate = async () => {
     setGenerating(true);
     try {
       const { jsPDF } = await import('jspdf');
-      const now = new Date();
       const doc = new jsPDF('p', 'mm', 'a4');
       const W = doc.internal.pageSize.getWidth();
       const H = doc.internal.pageSize.getHeight();
-      const monthNow = now.getMonth();
-      const yearNow = now.getFullYear();
-      const monthName = format(now, 'MMMM yyyy', { locale: es }).toUpperCase();
-      const marginL = 14;
-      const marginR = 14;
-      const contentW = W - marginL - marginR;
+      const ML = 16, MR = 16;
+      const CW = W - ML - MR;
+      const now = new Date();
+      const todayISO = format(now, 'yyyy-MM-dd');
+      const monthName = format(now, "MMMM 'de' yyyy", { locale: es });
 
-      // Helpers
-      const rgb = (c: readonly [number, number, number]) => c;
+      // ----- primitives -----
       const setFill = (c: readonly [number, number, number]) => doc.setFillColor(c[0], c[1], c[2]);
-      const setTextC = (c: readonly [number, number, number]) => doc.setTextColor(c[0], c[1], c[2]);
+      const setText = (c: readonly [number, number, number]) => doc.setTextColor(c[0], c[1], c[2]);
       const setDraw = (c: readonly [number, number, number]) => doc.setDrawColor(c[0], c[1], c[2]);
+      const pageBg = () => { setFill(C.paper); doc.rect(0, 0, W, H, 'F'); };
 
-      const drawDarkPage = () => {
-        setFill(C.bg);
-        doc.rect(0, 0, W, H, 'F');
+      let page = 1;
+      const drawFooter = () => {
+        setDraw(C.line); doc.setLineWidth(0.2);
+        doc.line(ML, H - 14, W - MR, H - 14);
+        setText(C.faint); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+        doc.text('PegoFlex · Reporte operativo', ML, H - 9);
+        doc.text(`Página ${page}`, W - MR, H - 9, { align: 'right' });
+        doc.text(format(now, "dd/MM/yyyy HH:mm"), W / 2, H - 9, { align: 'center' });
       };
 
-      const ensureSpace = (y: number, needed: number): number => {
-        if (y + needed > H - 20) {
-          doc.addPage();
-          drawDarkPage();
-          return 18;
-        }
-        return y;
+      const newPage = () => { doc.addPage(); pageBg(); page++; drawFooter(); return 22; };
+      const ensure = (y: number, need: number) => (y + need > H - 20) ? newPage() : y;
+
+      const sectionTitle = (title: string, y: number) => {
+        y = ensure(y, 14);
+        setFill(C.band); doc.roundedRect(ML, y, CW, 9, 1.5, 1.5, 'F');
+        setFill(C.accent); doc.rect(ML, y, 2, 9, 'F');
+        setText(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5);
+        doc.text(title.toUpperCase(), ML + 5, y + 6);
+        return y + 13;
       };
 
-      const drawSectionTitle = (title: string, y: number): number => {
-        y = ensureSpace(y, 14);
-        // Orange accent line
-        setFill(C.orange);
-        doc.rect(marginL, y, 4, 8, 'F');
-        setTextC(C.white);
-        doc.setFontSize(13);
-        doc.setFont('helvetica', 'bold');
-        doc.text(title, marginL + 8, y + 6);
-        return y + 14;
+      const kpi = (x: number, y: number, w: number, h: number, label: string, value: string, sub?: string, color: readonly [number, number, number] = C.accent) => {
+        setFill(C.cardBg); setDraw(C.line); doc.setLineWidth(0.25);
+        doc.roundedRect(x, y, w, h, 2, 2, 'FD');
+        setFill(color); doc.roundedRect(x, y, w, 1.2, 0.6, 0.6, 'F');
+        setText(C.mute); doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5);
+        doc.text(label.toUpperCase(), x + 3, y + 6);
+        setText(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+        doc.text(value, x + 3, y + 15);
+        if (sub) { setText(C.mute); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.text(sub, x + 3, y + 20); }
       };
 
-      const drawCardBg = (x: number, y: number, w: number, h: number) => {
-        setFill(C.bgLight);
-        doc.roundedRect(x, y, w, h, 2, 2, 'F');
+      // Table with header + zebra rows
+      const table = (y: number, cols: { label: string; width: number; align?: 'left' | 'right' | 'center' }[], rows: (string | number)[][]) => {
+        // header
+        y = ensure(y, 12);
+        setFill(C.ink); doc.rect(ML, y, CW, 7, 'F');
+        setText([255, 255, 255] as any); doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5);
+        let x = ML + 2;
+        cols.forEach(c => {
+          const tx = c.align === 'right' ? x + c.width - 2 : c.align === 'center' ? x + c.width / 2 : x;
+          doc.text(c.label.toUpperCase(), tx, y + 4.8, { align: c.align || 'left' });
+          x += c.width;
+        });
+        y += 7;
+        // rows
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+        rows.forEach((r, idx) => {
+          y = ensure(y, 6);
+          if (idx % 2 === 0) { setFill(C.band); doc.rect(ML, y, CW, 6, 'F'); }
+          setText(C.ink);
+          let cx = ML + 2;
+          cols.forEach((c, i) => {
+            const val = String(r[i] ?? '');
+            const tx = c.align === 'right' ? cx + c.width - 2 : c.align === 'center' ? cx + c.width / 2 : cx;
+            const trimmed = val.length > Math.floor(c.width / 1.8) ? val.substring(0, Math.floor(c.width / 1.8) - 1) + '…' : val;
+            doc.text(trimmed, tx, y + 4.2, { align: c.align || 'left' });
+            cx += c.width;
+          });
+          y += 6;
+        });
+        setDraw(C.line); doc.setLineWidth(0.2); doc.line(ML, y, ML + CW, y);
+        return y + 4;
       };
 
-      // ===== Filter data for current month =====
-      const filterMonth = <T extends { date: string }>(arr: T[]) =>
-        arr.filter(r => {
-          const d = new Date(r.date + 'T12:00:00');
-          return d.getMonth() === monthNow && d.getFullYear() === yearNow;
+      const bar = (x: number, y: number, w: number, h: number, entries: { label: string; value: number }[]) => {
+        const max = Math.max(1, ...entries.map(e => e.value));
+        const gap = 4; const barW = Math.max(6, (w - gap * (entries.length - 1)) / Math.max(1, entries.length));
+        // baseline
+        setDraw(C.line); doc.setLineWidth(0.2); doc.line(x, y + h, x + w, y + h);
+        entries.forEach((e, i) => {
+          const bx = x + i * (barW + gap);
+          const bh = (e.value / max) * (h - 8);
+          const by = y + h - bh;
+          setFill(C.accent); doc.roundedRect(bx, by, barW, bh, 1, 1, 'F');
+          setFill(C.accent2); doc.roundedRect(bx, by, barW, Math.min(bh, bh * 0.35), 1, 1, 'F');
+          setText(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5);
+          doc.text(e.value.toLocaleString(), bx + barW / 2, by - 1.2, { align: 'center' });
+          setText(C.mute); doc.setFont('helvetica', 'normal'); doc.setFontSize(6);
+          const lbl = e.label.length > 10 ? e.label.substring(0, 10) + '…' : e.label;
+          doc.text(lbl, bx + barW / 2, y + h + 3.5, { align: 'center' });
         });
-
-      const monthProd = filterMonth(prodRecords);
-      const monthSales = filterMonth(saleRecords);
-      const monthAtt = filterMonth(attRecords);
-
-      // ===== PAGE 1: Cover + KPIs =====
-      drawDarkPage();
-
-      // Header band
-      setFill(C.bgLight);
-      doc.rect(0, 0, W, 52, 'F');
-      setFill(C.orange);
-      doc.rect(0, 50, W, 2.5, 'F');
-
-      setTextC(C.orange);
-      doc.setFontSize(26);
-      doc.setFont('helvetica', 'bold');
-      doc.text('REPORTE GYC', W / 2, 22, { align: 'center' });
-
-      setTextC(C.grayLight);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`PegoFlex — ${monthName}`, W / 2, 32, { align: 'center' });
-
-      setTextC(C.gray);
-      doc.setFontSize(8);
-      doc.text(`Generado: ${format(now, 'dd/MM/yyyy')} a las ${format(now, 'HH:mm:ss')}`, W / 2, 42, { align: 'center' });
-
-      // KPI Cards
-      let y = 62;
-      const totalProd = monthProd.reduce((s, r) => s + r.quantity, 0);
-      const totalSales = monthSales.reduce((s, r) => s + r.quantity, 0);
-      const totalPresent = monthAtt.filter(r => r.status === 'present').length;
-      const totalAbsent = monthAtt.filter(r => r.status === 'absent').length;
-      const attRate = monthAtt.length > 0 ? Math.round((totalPresent / monthAtt.length) * 100) : 0;
-
-      const kpiW = (contentW - 8) / 3;
-      const kpis = [
-        { label: 'PRODUCCIÓN', value: `${totalProd.toLocaleString()}`, sub: 'sacos producidos' },
-        { label: 'VENTAS', value: `${totalSales.toLocaleString()}`, sub: 'sacos vendidos' },
-        { label: 'ASISTENCIA', value: `${attRate}%`, sub: `${totalPresent} presentes / ${totalAbsent} ausentes` },
-      ];
-
-      kpis.forEach((kpi, i) => {
-        const x = marginL + i * (kpiW + 4);
-        drawCardBg(x, y, kpiW, 28);
-        setFill(C.orange);
-        doc.rect(x, y, kpiW, 1.5, 'F');
-
-        setTextC(C.gray);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.text(kpi.label, x + kpiW / 2, y + 8, { align: 'center' });
-
-        setTextC(C.orange);
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text(kpi.value, x + kpiW / 2, y + 18, { align: 'center' });
-
-        setTextC(C.gray);
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'normal');
-        doc.text(kpi.sub, x + kpiW / 2, y + 24, { align: 'center' });
-      });
-
-      y += 38;
-
-      // ===== PRODUCCIÓN SECTION =====
-      y = drawSectionTitle('PRODUCCIÓN MENSUAL', y);
-
-      // Product breakdown table
-      const prodByType: Record<string, number> = {};
-      monthProd.forEach(r => { prodByType[r.product_name] = (prodByType[r.product_name] || 0) + r.quantity; });
-      const prodEntries = Object.entries(prodByType).sort((a, b) => b[1] - a[1]);
-
-      // Summary cards
-      const prodCardW = (contentW - 4) / 2;
-      drawCardBg(marginL, y, prodCardW, 22);
-      drawCardBg(marginL + prodCardW + 4, y, prodCardW, 22);
-
-      setTextC(C.gray);
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'bold');
-      doc.text('TOTAL PRODUCIDO', marginL + prodCardW / 2, y + 7, { align: 'center' });
-      setTextC(C.orangeLight);
-      doc.setFontSize(14);
-      doc.text(`${totalProd.toLocaleString()} sacos`, marginL + prodCardW / 2, y + 16, { align: 'center' });
-
-      setTextC(C.gray);
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'bold');
-      doc.text('TIPOS PRODUCIDOS', marginL + prodCardW + 4 + prodCardW / 2, y + 7, { align: 'center' });
-      setTextC(C.orangeLight);
-      doc.setFontSize(14);
-      doc.text(`${prodEntries.length}`, marginL + prodCardW + 4 + prodCardW / 2, y + 16, { align: 'center' });
-
-      y += 28;
-
-      // Bar chart for production by product
-      if (prodEntries.length > 0) {
-        y = ensureSpace(y, 52);
-        drawCardBg(marginL, y, contentW, 48);
-
-        setTextC(C.gray);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.text('PRODUCCIÓN POR PRODUCTO', marginL + 6, y + 8);
-
-        const chartX = marginL + 10;
-        const chartY = y + 14;
-        const chartW = contentW - 20;
-        const chartH = 28;
-        const maxVal = Math.max(...prodEntries.map(e => e[1]));
-        const barW = Math.min(30, (chartW - 10) / prodEntries.length - 4);
-
-        // Grid lines
-        for (let g = 0; g <= 4; g++) {
-          const gy = chartY + chartH - (g / 4) * chartH;
-          setDraw(C.grayDark);
-          doc.setLineWidth(0.1);
-          doc.line(chartX, gy, chartX + chartW, gy);
-          setTextC(C.grayDark);
-          doc.setFontSize(5);
-          doc.setFont('helvetica', 'normal');
-          doc.text(Math.round((g / 4) * maxVal).toString(), chartX - 2, gy + 1, { align: 'right' });
-        }
-
-        prodEntries.forEach((entry, i) => {
-          const bx = chartX + 10 + i * ((chartW - 10) / prodEntries.length) + ((chartW - 10) / prodEntries.length - barW) / 2;
-          const bh = (entry[1] / maxVal) * chartH;
-          const by = chartY + chartH - bh;
-
-          // Gradient effect - draw two rects
-          setFill(C.orange);
-          doc.roundedRect(bx, by, barW, bh, 1, 1, 'F');
-          setFill(C.orangeLight);
-          doc.roundedRect(bx, by, barW, bh * 0.4, 1, 1, 'F');
-
-          // Value on top
-          setTextC(C.white);
-          doc.setFontSize(6);
-          doc.setFont('helvetica', 'bold');
-          doc.text(entry[1].toLocaleString(), bx + barW / 2, by - 2, { align: 'center' });
-
-          // Label below
-          setTextC(C.gray);
-          doc.setFontSize(5.5);
-          doc.setFont('helvetica', 'normal');
-          const label = entry[0].length > 12 ? entry[0].substring(0, 12) + '…' : entry[0];
-          doc.text(label, bx + barW / 2, chartY + chartH + 5, { align: 'center' });
-        });
-
-        y += 54;
-      }
-
-      // Daily production line chart
-      const daysInMonth = new Date(yearNow, monthNow + 1, 0).getDate();
-      const dailyProd: number[] = [];
-      for (let d = 1; d <= daysInMonth; d++) {
-        const ds = `${yearNow}-${String(monthNow + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        dailyProd.push(monthProd.filter(r => r.date === ds).reduce((s, r) => s + r.quantity, 0));
-      }
-
-      if (dailyProd.some(v => v > 0)) {
-        y = ensureSpace(y, 55);
-        drawCardBg(marginL, y, contentW, 50);
-
-        setTextC(C.gray);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.text('TENDENCIA DIARIA DE PRODUCCIÓN', marginL + 6, y + 8);
-
-        const lx = marginL + 14;
-        const ly = y + 14;
-        const lw = contentW - 24;
-        const lh = 30;
-        const maxDay = Math.max(...dailyProd, 1);
-
-        // Grid
-        for (let g = 0; g <= 4; g++) {
-          const gy = ly + lh - (g / 4) * lh;
-          setDraw(C.grayDark);
-          doc.setLineWidth(0.1);
-          doc.line(lx, gy, lx + lw, gy);
-          setTextC(C.grayDark);
-          doc.setFontSize(4.5);
-          doc.setFont('helvetica', 'normal');
-          doc.text(Math.round((g / 4) * maxDay).toString(), lx - 2, gy + 1, { align: 'right' });
-        }
-
-        // Line
-        setDraw(C.orange);
-        doc.setLineWidth(0.6);
-        const points: [number, number][] = [];
-        for (let d = 0; d < daysInMonth; d++) {
-          const px = lx + (d / (daysInMonth - 1)) * lw;
-          const py = ly + lh - (dailyProd[d] / maxDay) * lh;
-          points.push([px, py]);
-          if (d > 0) {
-            doc.line(points[d - 1][0], points[d - 1][1], px, py);
-          }
-        }
-
-        // Area fill under curve
-        setFill(C.orange);
-        doc.setGState(new (doc as any).GState({ opacity: 0.15 }));
-        const areaPoints: number[] = [];
-        points.forEach(p => { areaPoints.push(p[0], p[1]); });
-        // Draw area as thin rects per segment
-        for (let d = 0; d < points.length - 1; d++) {
-          const x1 = points[d][0], y1 = points[d][1];
-          const x2 = points[d + 1][0], y2 = points[d + 1][1];
-          const segW = x2 - x1;
-          const topY = Math.min(y1, y2);
-          const botY = ly + lh;
-          setFill(C.orange);
-          doc.rect(x1, topY, segW, botY - topY, 'F');
-        }
-        doc.setGState(new (doc as any).GState({ opacity: 1 }));
-
-        // Dots
-        points.forEach((p, d) => {
-          if (dailyProd[d] > 0) {
-            setFill(C.orange);
-            doc.circle(p[0], p[1], 0.8, 'F');
-          }
-        });
-
-        // X-axis labels (every 5 days)
-        for (let d = 0; d < daysInMonth; d += 5) {
-          const px = lx + (d / (daysInMonth - 1)) * lw;
-          setTextC(C.grayDark);
-          doc.setFontSize(4.5);
-          doc.text(String(d + 1), px, ly + lh + 4, { align: 'center' });
-        }
-
-        y += 56;
-      }
-
-      // ===== VENTAS SECTION =====
-      y = ensureSpace(y, 20);
-      y = drawSectionTitle('VENTAS MENSUAL', y);
-
-      // Sales by product pie chart
-      const salesByProd: Record<string, number> = {};
-      monthSales.forEach(r => { salesByProd[r.product_name] = (salesByProd[r.product_name] || 0) + r.quantity; });
-      const salesEntries = Object.entries(salesByProd).sort((a, b) => b[1] - a[1]);
-
-      // Sales by client
-      const salesByClient: Record<string, number> = {};
-      monthSales.forEach(r => {
-        const cl = r.client || 'Sin cliente';
-        salesByClient[cl] = (salesByClient[cl] || 0) + r.quantity;
-      });
-      const clientEntries = Object.entries(salesByClient).sort((a, b) => b[1] - a[1]);
-
-      if (salesEntries.length > 0 || clientEntries.length > 0) {
-        y = ensureSpace(y, 56);
-        const halfW = (contentW - 4) / 2;
-
-        // Pie chart card
-        drawCardBg(marginL, y, halfW, 52);
-        setTextC(C.gray);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.text('VENTAS POR PRODUCTO', marginL + halfW / 2, y + 8, { align: 'center' });
-
-        // Draw pie chart
-        const pieColors = [C.orange, C.orangeLight, [251, 191, 36] as const, [234, 88, 12] as const, C.grayDark];
-        const cx = marginL + halfW / 2;
-        const cy = y + 28;
-        const radius = 14;
-        let startAngle = -Math.PI / 2;
-
-        salesEntries.forEach((entry, i) => {
-          const slice = (entry[1] / totalSales) * 2 * Math.PI;
-          const endAngle = startAngle + slice;
-          const color = pieColors[i % pieColors.length];
-
-          // Draw pie slice as filled sectors using many triangles
-          setFill(color as readonly [number, number, number]);
-          const steps = Math.max(8, Math.ceil(slice / 0.1));
-          for (let s = 0; s < steps; s++) {
-            const a1 = startAngle + (s / steps) * slice;
-            const a2 = startAngle + ((s + 1) / steps) * slice;
-            const x1 = cx + Math.cos(a1) * radius;
-            const y1_ = cy + Math.sin(a1) * radius;
-            const x2 = cx + Math.cos(a2) * radius;
-            const y2_ = cy + Math.sin(a2) * radius;
-            doc.triangle(cx, cy, x1, y1_, x2, y2_, 'F');
-          }
-
-          startAngle = endAngle;
-        });
-
-        // Legend
-        let legendY = y + 44;
-        salesEntries.forEach((entry, i) => {
-          if (i > 3) return;
-          const color = pieColors[i % pieColors.length];
-          const pct = Math.round((entry[1] / totalSales) * 100);
-          setFill(color as readonly [number, number, number]);
-          doc.rect(marginL + 4, legendY - 2, 3, 3, 'F');
-          setTextC(C.grayLight);
-          doc.setFontSize(5);
-          doc.setFont('helvetica', 'normal');
-          const txt = `${entry[0]} (${pct}%)`;
-          doc.text(txt, marginL + 9, legendY);
-          legendY += 4;
-        });
-
-        // Client breakdown card
-        drawCardBg(marginL + halfW + 4, y, halfW, 52);
-        setTextC(C.gray);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.text('TOP CLIENTES', marginL + halfW + 4 + halfW / 2, y + 8, { align: 'center' });
-
-        // Horizontal bar chart for clients
-        const topClients = clientEntries.slice(0, 5);
-        const maxClientVal = topClients.length > 0 ? topClients[0][1] : 1;
-        const cBarStartY = y + 14;
-        const cBarX = marginL + halfW + 10;
-        const cBarMaxW = halfW - 16;
-
-        topClients.forEach((cl, i) => {
-          const barY = cBarStartY + i * 7.5;
-          const barW = (cl[1] / maxClientVal) * cBarMaxW;
-
-          setTextC(C.grayLight);
-          doc.setFontSize(5.5);
-          doc.setFont('helvetica', 'normal');
-          const name = cl[0].length > 14 ? cl[0].substring(0, 14) + '…' : cl[0];
-          doc.text(name, cBarX, barY);
-
-          setFill(C.orange);
-          doc.roundedRect(cBarX, barY + 1, barW, 3.5, 1, 1, 'F');
-
-          setTextC(C.orangeLight);
-          doc.setFontSize(5);
-          doc.setFont('helvetica', 'bold');
-          doc.text(`${cl[1].toLocaleString()}`, cBarX + barW + 2, barY + 4);
-        });
-
-        y += 58;
-      }
-
-      // Sales detail table
-      const sortedSales = [...monthSales].sort((a, b) => b.date.localeCompare(a.date));
-      if (sortedSales.length > 0) {
-        y = ensureSpace(y, 20);
-
-        drawCardBg(marginL, y, contentW, 8);
-        setFill(C.orange);
-        doc.rect(marginL, y, contentW, 7, 'F');
-        setTextC(C.white);
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'bold');
-        const cols = [marginL + 3, marginL + 28, marginL + 65, marginL + 95, marginL + 135];
-        doc.text('FECHA', cols[0], y + 5);
-        doc.text('PRODUCTO', cols[1], y + 5);
-        doc.text('CANTIDAD', cols[2], y + 5);
-        doc.text('CLIENTE', cols[3], y + 5);
-        doc.text('Nº GUÍA', cols[4], y + 5);
-        y += 9;
-
-        sortedSales.forEach((sale, i) => {
-          y = ensureSpace(y, 7);
-          if (i % 2 === 0) {
-            setFill(C.bgLight);
-            doc.rect(marginL, y - 3.5, contentW, 6.5, 'F');
-          }
-          setTextC(C.grayLight);
-          doc.setFontSize(6);
-          doc.setFont('helvetica', 'normal');
-          doc.text(sale.date, cols[0], y);
-          doc.text(sale.product_name, cols[1], y);
-          doc.text(`${sale.quantity} sacos`, cols[2], y);
-          doc.text(sale.client || '-', cols[3], y);
-          setTextC(C.orangeLight);
-          doc.text(sale.notes || '-', cols[4], y);
-          y += 6.5;
-        });
-        y += 6;
-      }
-
-      // ===== ASISTENCIA SECTION =====
-      y = ensureSpace(y, 20);
-      y = drawSectionTitle('ASISTENCIA DEL PERSONAL', y);
-
-      // Attendance bar chart by employee
-      if (employees.length > 0) {
-        y = ensureSpace(y, 56);
-        drawCardBg(marginL, y, contentW, 52);
-
-        setTextC(C.gray);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.text('ASISTENCIA POR EMPLEADO', marginL + 6, y + 8);
-
-        const chartX = marginL + 8;
-        const chartY2 = y + 14;
-        const chartW2 = contentW - 16;
-        const chartH2 = 30;
-
-        const empData = employees.map(emp => {
-          const empRecs = monthAtt.filter(r => r.employee_id === emp.id);
-          return {
-            name: emp.name,
-            present: empRecs.filter(r => r.status === 'present').length,
-            absent: empRecs.filter(r => r.status === 'absent').length,
-          };
-        });
-        const maxEmp = Math.max(...empData.map(e => e.present + e.absent), 1);
-        const groupW = chartW2 / empData.length;
-        const barW = Math.min(12, groupW * 0.35);
-
-        // Grid
-        for (let g = 0; g <= 4; g++) {
-          const gy = chartY2 + chartH2 - (g / 4) * chartH2;
-          setDraw(C.grayDark);
-          doc.setLineWidth(0.1);
-          doc.line(chartX, gy, chartX + chartW2, gy);
-        }
-
-        empData.forEach((emp, i) => {
-          const gx = chartX + i * groupW + groupW / 2;
-
-          // Present bar (green-ish orange)
-          const ph = (emp.present / maxEmp) * chartH2;
-          setFill(C.green);
-          if (ph > 0) doc.roundedRect(gx - barW - 0.5, chartY2 + chartH2 - ph, barW, ph, 0.8, 0.8, 'F');
-
-          // Absent bar (red)
-          const ah = (emp.absent / maxEmp) * chartH2;
-          setFill(C.red);
-          if (ah > 0) doc.roundedRect(gx + 0.5, chartY2 + chartH2 - ah, barW, ah, 0.8, 0.8, 'F');
-
-          // Name
-          setTextC(C.gray);
-          doc.setFontSize(4.5);
-          doc.setFont('helvetica', 'normal');
-          const shortName = emp.name.length > 10 ? emp.name.substring(0, 10) + '…' : emp.name;
-          doc.text(shortName, gx, chartY2 + chartH2 + 5, { align: 'center' });
-        });
-
-        // Legend
-        setFill(C.green);
-        doc.rect(marginL + contentW - 40, y + 6, 3, 3, 'F');
-        setTextC(C.grayLight);
-        doc.setFontSize(5);
-        doc.text('Presente', marginL + contentW - 36, y + 8.5);
-        setFill(C.red);
-        doc.rect(marginL + contentW - 22, y + 6, 3, 3, 'F');
-        doc.text('Ausente', marginL + contentW - 18, y + 8.5);
-
-        y += 58;
-      }
-
-      // Attendance detail table
-      y = ensureSpace(y, 20);
-      drawCardBg(marginL, y, contentW, 8);
-      setFill(C.orange);
-      doc.rect(marginL, y, contentW, 7, 'F');
-      setTextC(C.white);
-      doc.setFontSize(6.5);
-      doc.setFont('helvetica', 'bold');
-      const attCols = [marginL + 3, marginL + 50, marginL + 80, marginL + 110, marginL + 145];
-      doc.text('EMPLEADO', attCols[0], y + 5);
-      doc.text('PRESENTES', attCols[1], y + 5);
-      doc.text('AUSENTES', attCols[2], y + 5);
-      doc.text('% ASISTENCIA', attCols[3], y + 5);
-      doc.text('ESTADO', attCols[4], y + 5);
-      y += 9;
-
-      employees.forEach((emp, i) => {
-        y = ensureSpace(y, 7);
-        const empRecs = monthAtt.filter(r => r.employee_id === emp.id);
-        const present = empRecs.filter(r => r.status === 'present').length;
-        const absent = empRecs.filter(r => r.status === 'absent').length;
-        const total = empRecs.length || 1;
-        const pct = Math.round((present / total) * 100);
-
-        if (i % 2 === 0) {
-          setFill(C.bgLight);
-          doc.rect(marginL, y - 3.5, contentW, 6.5, 'F');
-        }
-
-        setTextC(C.grayLight);
-        doc.setFontSize(6);
-        doc.setFont('helvetica', 'normal');
-        doc.text(emp.name, attCols[0], y);
-        doc.text(String(present), attCols[1], y);
-        doc.text(String(absent), attCols[2], y);
-
-        // Pct with color coding
-        if (pct >= 80) setTextC(C.green);
-        else if (pct >= 50) setTextC(C.orangeLight);
-        else setTextC(C.red);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${pct}%`, attCols[3], y);
-
-        // Status badge
-        const status = pct >= 80 ? 'ÓPTIMO' : pct >= 50 ? 'REGULAR' : 'CRÍTICO';
-        const statusColor = pct >= 80 ? C.green : pct >= 50 ? C.orangeLight : C.red;
-        setFill(statusColor as readonly [number, number, number]);
-        doc.roundedRect(attCols[4] - 1, y - 3, 18, 5, 1, 1, 'F');
-        setTextC(C.white);
-        doc.setFontSize(5);
-        doc.text(status, attCols[4] + 8, y, { align: 'center' });
-
-        y += 6.5;
-      });
-
-      // ===== MATERIAS PRIMAS SECTION =====
-      const monthRaw = filterMonth(rawMatRecords);
-      if (monthRaw.length > 0) {
-        y = ensureSpace(y, 20);
-        y = drawSectionTitle('MATERIAS PRIMAS', y);
-
-        // Summary by material
-        const rawByMat: Record<string, { qty: number; unit: string }> = {};
-        monthRaw.forEach(r => {
-          const key = r.material_name;
-          if (!rawByMat[key]) rawByMat[key] = { qty: 0, unit: r.unit };
-          rawByMat[key].qty += r.quantity;
-        });
-        const rawEntries = Object.entries(rawByMat).sort((a, b) => b[1].qty - a[1].qty);
-
-        // Bar chart
-        if (rawEntries.length > 0) {
-          y = ensureSpace(y, 52);
-          drawCardBg(marginL, y, contentW, 48);
-
-          setTextC(C.gray);
-          doc.setFontSize(7);
-          doc.setFont('helvetica', 'bold');
-          doc.text('ENTRADAS POR MATERIAL', marginL + 6, y + 8);
-
-          const rChartX = marginL + 10;
-          const rChartY = y + 14;
-          const rChartW = contentW - 20;
-          const rChartH = 28;
-          const rMaxVal = Math.max(...rawEntries.map(e => e[1].qty), 1);
-          const rBarW = Math.min(22, (rChartW - 10) / rawEntries.length - 4);
-
-          for (let g = 0; g <= 4; g++) {
-            const gy = rChartY + rChartH - (g / 4) * rChartH;
-            setDraw(C.grayDark);
-            doc.setLineWidth(0.1);
-            doc.line(rChartX, gy, rChartX + rChartW, gy);
-            setTextC(C.grayDark);
-            doc.setFontSize(5);
-            doc.setFont('helvetica', 'normal');
-            doc.text(Math.round((g / 4) * rMaxVal).toString(), rChartX - 2, gy + 1, { align: 'right' });
-          }
-
-          rawEntries.forEach((entry, i) => {
-            const bx = rChartX + 10 + i * ((rChartW - 10) / rawEntries.length) + ((rChartW - 10) / rawEntries.length - rBarW) / 2;
-            const bh = (entry[1].qty / rMaxVal) * rChartH;
-            const by = rChartY + rChartH - bh;
-
-            setFill(C.orange);
-            doc.roundedRect(bx, by, rBarW, bh, 1, 1, 'F');
-            setFill(C.orangeLight);
-            doc.roundedRect(bx, by, rBarW, bh * 0.4, 1, 1, 'F');
-
-            setTextC(C.white);
-            doc.setFontSize(5.5);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${entry[1].qty.toLocaleString()} ${entry[1].unit.substring(0, 3)}`, bx + rBarW / 2, by - 2, { align: 'center' });
-
-            setTextC(C.gray);
-            doc.setFontSize(4.5);
-            doc.setFont('helvetica', 'normal');
-            const lbl = entry[0].length > 14 ? entry[0].substring(0, 14) + '…' : entry[0];
-            doc.text(lbl, bx + rBarW / 2, rChartY + rChartH + 5, { align: 'center' });
-          });
-
-          y += 54;
-        }
-
-        // Detail table
-        const sortedRaw = [...monthRaw].sort((a, b) => b.date.localeCompare(a.date));
-        y = ensureSpace(y, 20);
-        drawCardBg(marginL, y, contentW, 8);
-        setFill(C.orange);
-        doc.rect(marginL, y, contentW, 7, 'F');
-        setTextC(C.white);
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'bold');
-        const rawCols = [marginL + 3, marginL + 28, marginL + 80, marginL + 120];
-        doc.text('FECHA', rawCols[0], y + 5);
-        doc.text('MATERIAL', rawCols[1], y + 5);
-        doc.text('CANTIDAD', rawCols[2], y + 5);
-        doc.text('UNIDAD', rawCols[3], y + 5);
-        y += 9;
-
-        sortedRaw.forEach((rec, i) => {
-          y = ensureSpace(y, 7);
-          if (i % 2 === 0) {
-            setFill(C.bgLight);
-            doc.rect(marginL, y - 3.5, contentW, 6.5, 'F');
-          }
-          setTextC(C.grayLight);
-          doc.setFontSize(6);
-          doc.setFont('helvetica', 'normal');
-          doc.text(rec.date, rawCols[0], y);
-          doc.text(rec.material_name, rawCols[1], y);
-          setTextC(C.orangeLight);
-          doc.setFont('helvetica', 'bold');
-          doc.text(rec.quantity.toLocaleString(), rawCols[2], y);
-          setTextC(C.grayLight);
-          doc.setFont('helvetica', 'normal');
-          doc.text(rec.unit, rawCols[3], y);
-          y += 6.5;
-        });
-        y += 6;
-      }
-
-
-      // ===== INVENTARIOS ACTUALES =====
-      if (finishedStock.length || materialStock.length || customSupplies.length) {
-        y = ensureSpace(y, 20);
-        y = drawSectionTitle('INVENTARIOS ACTUALES', y);
-        const renderInvBlock = (title: string, rows: { name: string; value: string; sub?: string }[]) => {
-          if (!rows.length) return;
-          y = ensureSpace(y, 14);
-          setTextC(C.orangeLight);
-          doc.setFontSize(8);
-          doc.setFont('helvetica', 'bold');
-          doc.text(title, marginL, y);
-          y += 4;
-          drawCardBg(marginL, y, contentW, 7);
-          setFill(C.orange);
-          doc.rect(marginL, y, contentW, 6, 'F');
-          setTextC(C.white);
-          doc.setFontSize(6.5);
-          const ic = [marginL + 3, marginL + 90, marginL + 130];
-          doc.text('NOMBRE', ic[0], y + 4);
-          doc.text('CANTIDAD', ic[1], y + 4);
-          doc.text('DETALLE', ic[2], y + 4);
-          y += 8;
-          rows.forEach((r, i) => {
-            y = ensureSpace(y, 6);
-            if (i % 2 === 0) {
-              setFill(C.bgLight);
-              doc.rect(marginL, y - 3, contentW, 5.5, 'F');
-            }
-            setTextC(C.grayLight);
-            doc.setFontSize(6);
-            doc.setFont('helvetica', 'normal');
-            doc.text(r.name, ic[0], y);
-            setTextC(C.orangeLight);
-            doc.setFont('helvetica', 'bold');
-            doc.text(r.value, ic[1], y);
-            setTextC(C.gray);
-            doc.setFont('helvetica', 'normal');
-            doc.text(r.sub || '', ic[2], y);
-            y += 5.5;
-          });
-          y += 3;
-        };
-        renderInvBlock('PRODUCTO TERMINADO (sacos)',
-          finishedStock.map(s => ({ name: s.product_name, value: `${Number(s.stock).toLocaleString()} sacos` })));
-        renderInvBlock('MATERIA PRIMA EN STOCK',
-          materialStock.map(s => ({ name: s.material_name, value: `${Number(s.stock).toLocaleString()} ${s.unit}` })));
-        renderInvBlock('INSUMOS PERSONALIZADOS',
-          customSupplies.map(s => ({ name: s.name, value: `${Number(s.current_quantity).toLocaleString()} ${s.unit}`, sub: `Alerta: ${Number(s.alert_threshold).toLocaleString()}` })));
-      }
-
-      // ===== PALETAS =====
-      if (warehouse > 0 || inCirculation > 0 || balances.length > 0 || movements.length > 0) {
-        y = ensureSpace(y, 20);
-        y = drawSectionTitle('GESTIÓN DE PALETAS', y);
-        const palKpiW = (contentW - 8) / 3;
-        const palKpis = [
-          { label: 'EN ALMACÉN', value: warehouse.toLocaleString() },
-          { label: 'EN CIRCULACIÓN', value: inCirculation.toLocaleString() },
-          { label: 'CLIENTES CON SALDO', value: String(balances.filter(b => b.balance > 0).length) },
-        ];
-        y = ensureSpace(y, 28);
-        palKpis.forEach((kpi, i) => {
-          const x = marginL + i * (palKpiW + 4);
-          drawCardBg(x, y, palKpiW, 22);
-          setFill(C.orange);
-          doc.rect(x, y, palKpiW, 1.2, 'F');
-          setTextC(C.gray);
-          doc.setFontSize(6.5);
-          doc.setFont('helvetica', 'bold');
-          doc.text(kpi.label, x + palKpiW / 2, y + 7, { align: 'center' });
-          setTextC(C.orange);
-          doc.setFontSize(14);
-          doc.setFont('helvetica', 'bold');
-          doc.text(kpi.value, x + palKpiW / 2, y + 16, { align: 'center' });
-        });
-        y += 28;
-
-        const topBal = balances.filter(b => b.balance > 0).slice(0, 10);
-        if (topBal.length > 0) {
-          y = ensureSpace(y, 14);
-          drawCardBg(marginL, y, contentW, 8);
-          setFill(C.orange);
-          doc.rect(marginL, y, contentW, 7, 'F');
-          setTextC(C.white);
-          doc.setFontSize(6.5);
-          doc.setFont('helvetica', 'bold');
-          const bc = [marginL + 3, marginL + 80, marginL + 105, marginL + 130];
-          doc.text('CLIENTE', bc[0], y + 5);
-          doc.text('ENTREGADAS', bc[1], y + 5);
-          doc.text('DEVUELTAS', bc[2], y + 5);
-          doc.text('SALDO', bc[3], y + 5);
-          y += 9;
-          topBal.forEach((b, i) => {
-            y = ensureSpace(y, 7);
-            if (i % 2 === 0) {
-              setFill(C.bgLight);
-              doc.rect(marginL, y - 3.5, contentW, 6.5, 'F');
-            }
-            setTextC(C.grayLight);
-            doc.setFontSize(6);
-            doc.setFont('helvetica', 'normal');
-            doc.text(b.client.length > 32 ? b.client.substring(0, 32) + '…' : b.client, bc[0], y);
-            doc.text(String(b.delivered), bc[1], y);
-            doc.text(String(b.received), bc[2], y);
-            setTextC(b.balance > 0 ? C.red : C.green);
-            doc.setFont('helvetica', 'bold');
-            doc.text(String(b.balance), bc[3], y);
-            y += 6.5;
-          });
-          y += 4;
-        }
-
-        const monthMov = movements.filter(m => {
-          const d = new Date(m.date + 'T12:00:00');
-          return d.getMonth() === monthNow && d.getFullYear() === yearNow;
-        });
-        if (monthMov.length > 0) {
-          y = ensureSpace(y, 14);
-          drawCardBg(marginL, y, contentW, 8);
-          setFill(C.orange);
-          doc.rect(marginL, y, contentW, 7, 'F');
-          setTextC(C.white);
-          doc.setFontSize(6.5);
-          doc.setFont('helvetica', 'bold');
-          const mc = [marginL + 3, marginL + 28, marginL + 85, marginL + 110, marginL + 140];
-          doc.text('FECHA', mc[0], y + 5);
-          doc.text('CLIENTE', mc[1], y + 5);
-          doc.text('ENT.', mc[2], y + 5);
-          doc.text('DEV.', mc[3], y + 5);
-          doc.text('USUARIO', mc[4], y + 5);
-          y += 9;
-          monthMov.slice(0, 40).forEach((m, i) => {
-            y = ensureSpace(y, 7);
-            if (i % 2 === 0) {
-              setFill(C.bgLight);
-              doc.rect(marginL, y - 3.5, contentW, 6.5, 'F');
-            }
-            setTextC(C.grayLight);
-            doc.setFontSize(6);
-            doc.setFont('helvetica', 'normal');
-            doc.text(m.date, mc[0], y);
-            doc.text(m.client.length > 26 ? m.client.substring(0, 26) + '…' : m.client, mc[1], y);
-            doc.text(String(m.delivered), mc[2], y);
-            doc.text(String(m.received), mc[3], y);
-            doc.text(m.userName, mc[4], y);
-            y += 6.5;
-          });
-        }
-      }
-
-      // ===== GUÍAS DEL MES =====
-      const allGuides = await listGuideMetadata();
-      const monthGuides = allGuides.filter(g => {
-        if (!g.date) return false;
-        const d = new Date(g.date + 'T12:00:00');
+      };
+
+      // ============================ PAGE 1 ============================
+      pageBg();
+      drawFooter();
+
+      // Elegant header
+      setFill(C.accent); doc.rect(0, 0, W, 3, 'F');
+      setText(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(22);
+      doc.text('PegoFlex', ML, 16);
+      setText(C.mute); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      doc.text('Reporte Operativo Ejecutivo', ML, 22);
+      setText(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text(monthName.charAt(0).toUpperCase() + monthName.slice(1), W - MR, 16, { align: 'right' });
+      setText(C.mute); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+      doc.text(`Emitido: ${format(now, "EEEE d 'de' MMMM, HH:mm", { locale: es })}`, W - MR, 22, { align: 'right' });
+      setDraw(C.line); doc.setLineWidth(0.4); doc.line(ML, 28, W - MR, 28);
+
+      // === Filter helpers ===
+      const monthNow = now.getMonth(), yearNow = now.getFullYear();
+      const inMonth = <T extends { date: string }>(arr: T[]) => arr.filter(r => {
+        const d = new Date(r.date + 'T12:00:00');
         return d.getMonth() === monthNow && d.getFullYear() === yearNow;
       });
-      if (monthGuides.length > 0) {
-        y = ensureSpace(y, 20);
-        y = drawSectionTitle('GUÍAS DESPACHADAS DEL MES', y);
-        drawCardBg(marginL, y, contentW, 8);
-        setFill(C.orange);
-        doc.rect(marginL, y, contentW, 7, 'F');
-        setTextC(C.white);
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'bold');
-        const gc = [marginL + 3, marginL + 28, marginL + 50, marginL + 100, marginL + 125, marginL + 145];
-        doc.text('Nº GUÍA', gc[0], y + 5);
-        doc.text('FECHA', gc[1], y + 5);
-        doc.text('CLIENTE', gc[2], y + 5);
-        doc.text('PRODUCTO', gc[3], y + 5);
-        doc.text('CANT.', gc[4], y + 5);
-        doc.text('CHOFER', gc[5], y + 5);
-        y += 9;
-        [...monthGuides].sort((a, b) => (b.date || '').localeCompare(a.date || '')).forEach((g, i) => {
-          y = ensureSpace(y, 7);
-          if (i % 2 === 0) {
-            setFill(C.bgLight);
-            doc.rect(marginL, y - 3.5, contentW, 6.5, 'F');
-          }
-          setTextC(C.grayLight);
-          doc.setFontSize(6);
-          doc.setFont('helvetica', 'normal');
-          doc.text(g.guideNumber, gc[0], y);
-          doc.text(g.date || '-', gc[1], y);
-          const cli = g.client || '-';
-          doc.text(cli.length > 24 ? cli.substring(0, 24) + '…' : cli, gc[2], y);
-          doc.text((g.productName || g.product || '-').substring(0, 12), gc[3], y);
-          setTextC(C.orangeLight);
-          doc.setFont('helvetica', 'bold');
-          doc.text(String(g.quantity ?? '-'), gc[4], y);
-          setTextC(C.grayLight);
-          doc.setFont('helvetica', 'normal');
-          const drv = g.driverName || '-';
-          doc.text(drv.length > 18 ? drv.substring(0, 18) + '…' : drv, gc[5], y);
-          y += 6.5;
-        });
+      const today = <T extends { date: string }>(arr: T[]) => arr.filter(r => r.date === todayISO);
+
+      const monthProd = inMonth(prodRecords);
+      const monthSales = inMonth(saleRecords);
+      const dayProd = today(prodRecords);
+      const daySales = today(saleRecords);
+
+      // === KPI row ===
+      let y = 36;
+      const totalMProd = monthProd.reduce((s, r) => s + r.quantity, 0);
+      const totalMSales = monthSales.reduce((s, r) => s + r.quantity, 0);
+      const totalDProd = dayProd.reduce((s, r) => s + r.quantity, 0);
+      const totalDSales = daySales.reduce((s, r) => s + r.quantity, 0);
+      const kpiW = (CW - 9) / 4;
+      kpi(ML + 0 * (kpiW + 3), y, kpiW, 24, 'Producción hoy', `${totalDProd.toLocaleString()}`, 'sacos');
+      kpi(ML + 1 * (kpiW + 3), y, kpiW, 24, 'Ventas hoy', `${totalDSales.toLocaleString()}`, 'sacos', C.ok);
+      kpi(ML + 2 * (kpiW + 3), y, kpiW, 24, 'Producción mes', `${totalMProd.toLocaleString()}`, `${monthProd.length} lotes`);
+      kpi(ML + 3 * (kpiW + 3), y, kpiW, 24, 'Ventas mes', `${totalMSales.toLocaleString()}`, `${monthSales.length} guías`, C.ok);
+      y += 30;
+
+      // ================== SECTION: PRODUCCIÓN DEL DÍA ==================
+      y = sectionTitle('Producción del día', y);
+      if (dayProd.length === 0) {
+        setText(C.mute); doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5);
+        doc.text('Sin lotes de producción registrados hoy.', ML, y + 2);
+        y += 8;
+      } else {
+        const byProduct: Record<string, number> = {};
+        dayProd.forEach(r => { byProduct[r.product_name] = (byProduct[r.product_name] || 0) + r.quantity; });
+        const entries = Object.entries(byProduct).map(([label, value]) => ({ label, value }));
+
+        y = ensure(y, 44);
+        setFill(C.cardBg); setDraw(C.line); doc.setLineWidth(0.25);
+        doc.roundedRect(ML, y, CW, 42, 2, 2, 'FD');
+        setText(C.mute); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+        doc.text('DISTRIBUCIÓN POR PRODUCTO', ML + 4, y + 6);
+        bar(ML + 6, y + 10, CW - 12, 26, entries);
+        y += 46;
+
+        y = table(y,
+          [
+            { label: 'Producto', width: 55 },
+            { label: 'Cantidad', width: 30, align: 'right' },
+            { label: 'Estado', width: 40 },
+            { label: 'Notas', width: CW - 125 },
+          ],
+          dayProd.map(r => [r.product_name, `${r.quantity.toLocaleString()} sacos`, r.shift_status || 'Normal', r.notes || '—']),
+        );
       }
 
-      const pages = doc.getNumberOfPages();
-      for (let i = 1; i <= pages; i++) {
-        doc.setPage(i);
-        // Footer bar
-        setFill(C.bgLight);
-        doc.rect(0, H - 10, W, 10, 'F');
-        setFill(C.orange);
-        doc.rect(0, H - 10, W, 0.5, 'F');
+      // ================== SECTION: RESUMEN DE VENTAS ==================
+      y = sectionTitle('Resumen de Ventas', y);
+      const salesByProd: Record<string, number> = {};
+      monthSales.forEach(r => { salesByProd[r.product_name] = (salesByProd[r.product_name] || 0) + r.quantity; });
+      const salesByClient: Record<string, number> = {};
+      monthSales.forEach(r => { const c = r.client || 'Sin cliente'; salesByClient[c] = (salesByClient[c] || 0) + r.quantity; });
+      const topClients = Object.entries(salesByClient).sort((a, b) => b[1] - a[1]).slice(0, 6);
 
-        setTextC(C.gray);
-        doc.setFontSize(6);
+      // side-by-side cards: product mix / top clients
+      const half = (CW - 4) / 2;
+      y = ensure(y, 48);
+      setFill(C.cardBg); setDraw(C.line); doc.setLineWidth(0.25);
+      doc.roundedRect(ML, y, half, 46, 2, 2, 'FD');
+      doc.roundedRect(ML + half + 4, y, half, 46, 2, 2, 'FD');
+      setText(C.mute); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+      doc.text('VENTAS POR PRODUCTO', ML + 4, y + 6);
+      doc.text('TOP CLIENTES (SACOS)', ML + half + 8, y + 6);
+
+      // Bars in left card
+      const spEntries = Object.entries(salesByProd).map(([label, value]) => ({ label, value }));
+      if (spEntries.length) bar(ML + 6, y + 10, half - 12, 30, spEntries);
+      else { setText(C.faint); doc.setFontSize(8); doc.text('Sin ventas', ML + half / 2, y + 24, { align: 'center' }); }
+
+      // Horizontal list right card
+      const maxCli = topClients[0]?.[1] || 1;
+      let ly = y + 12;
+      topClients.forEach((c, i) => {
+        const bw = ((c[1] / maxCli) * (half - 40));
+        setText(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+        doc.text(`${i + 1}.`, ML + half + 8, ly + 3);
         doc.setFont('helvetica', 'normal');
-        doc.text(`PegoFlex — Reporte GYC — ${monthName}`, marginL, H - 4);
+        const name = c[0].length > 20 ? c[0].substring(0, 20) + '…' : c[0];
+        doc.text(name, ML + half + 13, ly + 3);
+        setFill(C.accent2); doc.roundedRect(ML + half + 8, ly + 4.2, bw, 1.6, 0.8, 0.8, 'F');
+        setText(C.accent); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+        doc.text(String(c[1]), ML + 2 * half - 2, ly + 3, { align: 'right' });
+        ly += 6;
+      });
+      if (!topClients.length) { setText(C.faint); doc.setFontSize(8); doc.text('Sin clientes', ML + half + 8 + (half - 16) / 2, y + 24, { align: 'center' }); }
+      y += 50;
 
-        setTextC(C.orangeLight);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${i} / ${pages}`, W - marginR, H - 4, { align: 'right' });
+      // Ventas detalle mes (compact)
+      const sortedSales = [...monthSales].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 25);
+      if (sortedSales.length) {
+        y = table(y,
+          [
+            { label: 'Fecha', width: 22 },
+            { label: 'Producto', width: 40 },
+            { label: 'Cliente', width: CW - 122 },
+            { label: 'Guía', width: 22, align: 'center' },
+            { label: 'Cant.', width: 22, align: 'right' },
+            { label: 'Total', width: 16, align: 'right' },
+          ],
+          sortedSales.map(s => [s.date, s.product_name, s.client || 'Sin cliente', (s as any).guide_number ?? '—', s.quantity.toLocaleString(), s.quantity.toLocaleString()]),
+        );
+        if (monthSales.length > 25) {
+          setText(C.mute); doc.setFont('helvetica', 'italic'); doc.setFontSize(7);
+          doc.text(`Mostrando 25 de ${monthSales.length} ventas del mes. El Excel contiene el detalle completo.`, ML, y);
+          y += 5;
+        }
       }
 
-      const fileName = `GYC_${format(now, 'ddMMyyyy')}.pdf`;
-      doc.save(fileName);
-      toast.success('Reporte GYC generado exitosamente');
-    } catch (err) {
+      // ================== SECTION: MATERIA PRIMA ==================
+      y = sectionTitle('Materia Prima e Inventario', y);
+
+      // Finished product stock cards
+      const finRows = finishedStock.length ? finishedStock : [];
+      if (finRows.length) {
+        const fw = (CW - (finRows.length - 1) * 3) / finRows.length;
+        y = ensure(y, 22);
+        finRows.forEach((f, i) => {
+          kpi(ML + i * (fw + 3), y, fw, 20, `Terminado · ${f.product_name}`, `${(f.stock ?? 0).toLocaleString()}`, 'sacos', C.ok);
+        });
+        y += 24;
+      }
+
+      // Materials table
+      if (materialStock.length) {
+        y = table(y,
+          [
+            { label: 'Material', width: 70 },
+            { label: 'Stock actual', width: 40, align: 'right' },
+            { label: 'Unidad', width: 30 },
+            { label: 'Última actualización', width: CW - 140, align: 'right' },
+          ],
+          [...materialStock].sort((a, b) => a.material_name.localeCompare(b.material_name)).map(m => [
+            m.material_name,
+            Number(m.stock || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }),
+            m.unit || '—',
+            m.updated_at ? format(new Date(m.updated_at), 'dd/MM/yyyy HH:mm') : '—',
+          ]),
+        );
+      }
+
+      // Latest raw material entries
+      const recentRaw = [...rawRecords].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
+      if (recentRaw.length) {
+        y = ensure(y, 6);
+        setText(C.mute); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+        doc.text('ÚLTIMAS ENTRADAS DE MATERIAL', ML, y + 2); y += 5;
+        y = table(y,
+          [
+            { label: 'Fecha', width: 22 },
+            { label: 'Material', width: 60 },
+            { label: 'Cantidad', width: 30, align: 'right' },
+            { label: 'Unidad', width: 24 },
+            { label: 'Notas', width: CW - 136 },
+          ],
+          recentRaw.map(r => [r.date, r.material_name, r.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 }), r.unit, r.notes || '—']),
+        );
+      }
+
+      // Paletas
+      y = ensure(y, 30);
+      const pw = (CW - 6) / 3;
+      kpi(ML + 0 * (pw + 3), y, pw, 20, 'Paletas en almacén', warehouse.toLocaleString(), 'unidades', C.ok);
+      kpi(ML + 1 * (pw + 3), y, pw, 20, 'Paletas en circulación', inCirculation.toLocaleString(), 'con clientes', C.warn);
+      kpi(ML + 2 * (pw + 3), y, pw, 20, 'Deudores activos', String(balances.filter(b => b.balance > 0).length), 'clientes', C.danger);
+      y += 24;
+
+      // ---- Save ----
+      const fname = `PegoFlex_Reporte_${format(now, 'yyyy_MM_dd_HHmm')}.pdf`;
+      doc.save(fname);
+      toast.success('Reporte PDF generado');
+    } catch (err: any) {
       console.error(err);
-      toast.error('Error al generar el reporte');
+      toast.error(err?.message || 'Error al generar el reporte');
     } finally {
       setGenerating(false);
     }
@@ -954,11 +350,11 @@ export function GYCReportButton() {
 
   return (
     <Button
-      onClick={generatePDF}
+      onClick={generate}
       disabled={generating}
       size="icon"
       variant="ghost"
-      title="Reporte GYC (PDF)"
+      title="Generar reporte PDF PegoFlex"
       className="text-muted-foreground hover:text-primary h-9 w-9"
     >
       {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { MaterialStatusCards } from '@/components/MaterialStatusCards';
 import { FinishedStockCards } from '@/components/FinishedStockCards';
 import { BagEntryForm } from '@/components/BagEntryForm';
+import { BagsClientsRanking } from '@/components/BagsClientsRanking';
 import { CustomSuppliesSection } from '@/components/CustomSuppliesSection';
 import { ResetStockButton } from '@/components/ResetStockButton';
 import { CapacityProjectionCard } from '@/components/CapacityProjectionCard';
@@ -243,8 +244,11 @@ export function RawMaterialsTracker() {
         </div>
       )}
 
-      {/* 4. Entrada de bolsas vacías */}
-      <BagEntryForm />
+      {/* 4. Bolsas: layout 2 columnas — información actual + ranking clientes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <BagEntryForm />
+        <BagsClientsRanking />
+      </div>
 
       {/* 5. Insumos personalizados */}
       <CustomSuppliesSection />
