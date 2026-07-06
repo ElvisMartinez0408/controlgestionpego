@@ -16,6 +16,10 @@ import { useFinishedStock } from '@/hooks/useFinishedStock';
 import { toast } from 'sonner';
 import { PinConfirmDialog } from '@/components/PinConfirmDialog';
 import { useAudits, formatAuditStamp } from '@/lib/audit';
+import { VoiceInputButton } from '@/components/VoiceInputButton';
+import { extractNumber, extractProduct } from '@/hooks/useVoiceInput';
+
+const PRODUCT_OPTIONS = ['Pego Gris', 'Pego Blanco', 'Pego Premium'];
 
 export function ProductionTracker() {
   const { addRecord, removeRecord, removeAllRecords, getRecordsByDate, loading } = useProduction();
@@ -224,7 +228,19 @@ export function ProductionTracker() {
             </div>
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Cantidad (sacos)</label>
-              <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" className="bg-secondary border-border" min="0" />
+              <div className="flex gap-1">
+                <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" className="bg-secondary border-border" min="0" />
+                <VoiceInputButton
+                  title="Dictar producto y cantidad (ej: 'pego gris 25 sacos')"
+                  onResult={(t) => {
+                    const num = extractNumber(t);
+                    const prod = extractProduct(t, PRODUCT_OPTIONS);
+                    if (prod) setProductName(prod);
+                    if (num !== null) setQuantity(String(num));
+                    if (!prod && num === null) toast.info('Voz no reconocida: intente "pego gris 30"');
+                  }}
+                />
+              </div>
             </div>
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Estado de Jornada *</label>
@@ -238,7 +254,13 @@ export function ProductionTracker() {
             </div>
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Notas (opcional)</label>
-              <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observaciones..." className="bg-secondary border-border" onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+              <div className="flex gap-1">
+                <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observaciones..." className="bg-secondary border-border" onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+                <VoiceInputButton
+                  title="Dictar notas"
+                  onResult={(t) => setNotes(prev => (prev ? prev + ' ' : '') + t)}
+                />
+              </div>
             </div>
           </div>
 
