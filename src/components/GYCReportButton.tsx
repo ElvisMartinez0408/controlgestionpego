@@ -301,11 +301,11 @@ export function GYCReportButton() {
             { label: 'Unidad', width: 30 },
             { label: 'Última actualización', width: CW - 140, align: 'right' },
           ],
-          [...materialStock].sort((a, b) => a.material.localeCompare(b.material)).map(m => [
-            m.material,
+          [...materialStock].sort((a, b) => a.material_name.localeCompare(b.material_name)).map(m => [
+            m.material_name,
             Number(m.stock || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }),
-            (m as any).unit || '—',
-            (m as any).updated_at ? format(new Date((m as any).updated_at), 'dd/MM/yyyy HH:mm') : '—',
+            m.unit || '—',
+            m.updated_at ? format(new Date(m.updated_at), 'dd/MM/yyyy HH:mm') : '—',
           ]),
         );
       }
