@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, ShieldAlert, DatabaseBackup, AlertTriangle, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { Download, Upload, ShieldAlert, DatabaseBackup, AlertTriangle, CheckCircle2, XCircle, Info, Loader2 } from 'lucide-react';
 import { exportBackup, importBackup, readBackupFile, validateBackupPayload, type BackupPayload, type RestoreLogEntry, type RestoreResult } from '@/lib/backup';
 import { PinConfirmDialog } from '@/components/PinConfirmDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -12,6 +12,7 @@ export function BackupPanel() {
   const [pendingPayload, setPendingPayload] = useState<BackupPayload | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [result, setResult] = useState<RestoreResult | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -51,23 +52,31 @@ export function BackupPanel() {
     setConfirmOpen(true);
   };
 
-  const handleImportConfirmed = async () => {
-    if (!pendingPayload) return;
+  const handleRestore = async () => {
+    console.log('[BackupPanel] handleRestore triggered', { hasPayload: !!pendingPayload });
+    if (!pendingPayload) {
+      toast.error('No hay respaldo cargado');
+      return;
+    }
+    setIsRestoring(true);
     setBusy(true);
     try {
       const res = await importBackup(pendingPayload);
+      console.log('[BackupPanel] restore result', res);
       setResult(res);
       setConfirmOpen(false);
       setPendingPayload(null);
       setLogOpen(true);
-      if (res.ok) {
-        toast.success(`Respaldo cargado · ${res.totals.inserted} registros`);
-      } else {
-        toast.error(`Restauración finalizó con ${res.totals.failed} errores · revisa el log`);
-      }
+      if (res.ok) toast.success(`Respaldo cargado · ${res.totals.inserted} registros`);
+      else toast.error(`Restauración finalizó con ${res.totals.failed} errores · revisa el log`);
     } catch (err: any) {
+      console.error('[BackupPanel] restore failed', err);
       toast.error(err?.message || 'Error al cargar respaldo');
-    } finally { setBusy(false); }
+      alert('Error al restaurar respaldo: ' + (err?.message || 'desconocido'));
+    } finally {
+      setIsRestoring(false);
+      setBusy(false);
+    }
   };
 
   const reloadNow = () => window.location.reload();
@@ -160,9 +169,16 @@ export function BackupPanel() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setConfirmOpen(false)} disabled={busy}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleImportConfirmed} disabled={busy}>
-              {busy ? 'Restaurando…' : 'Sí, reemplazar todo'}
+            <Button type="button" variant="ghost" onClick={() => setConfirmOpen(false)} disabled={isRestoring}>Cancelar</Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleRestore}
+              disabled={isRestoring || !pendingPayload}
+            >
+              {isRestoring ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Restaurando…</>
+              ) : 'Sí, reemplazar todo'}
             </Button>
           </DialogFooter>
         </DialogContent>

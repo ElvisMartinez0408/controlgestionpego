@@ -244,8 +244,8 @@ export function RawMaterialsTracker() {
         </div>
       )}
 
-      {/* 4. Bolsas: layout 2 columnas — información actual + ranking clientes */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+      {/* 4. Bolsas: layout 2 columnas — desperdicio + deudores paletas (scroll independiente) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         <BagEntryForm />
         <BagsClientsRanking />
       </div>
