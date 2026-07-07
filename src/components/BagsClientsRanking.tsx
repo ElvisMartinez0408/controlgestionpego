@@ -21,7 +21,7 @@ export function BagsClientsRanking() {
   const maxBal = top[0]?.balance || 1;
 
   return (
-    <div className="glass-card p-4 flex flex-col h-full min-h-[280px]">
+    <div className="glass-card p-4 flex flex-col" style={{ maxHeight: 400 }}>
       <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="font-semibold text-foreground flex items-center gap-2">
@@ -45,8 +45,8 @@ export function BagsClientsRanking() {
         </div>
       ) : (
         <ul
-          className="space-y-2 overflow-y-auto pr-1"
-          style={{ maxHeight: '260px' }}
+          className="space-y-2 overflow-y-auto pr-1 flex-1"
+          style={{ maxHeight: 400 }}
         >
           {top.map((b, i) => {
             const pct = Math.max(6, (b.balance / maxBal) * 100);
