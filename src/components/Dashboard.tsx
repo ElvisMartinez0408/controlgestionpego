@@ -7,6 +7,7 @@ import { Users, Package, DollarSign, TrendingUp, UserCheck, UserX, AlertTriangle
 import { useStockAlerts } from '@/hooks/useStockAlerts';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { listDefectiveBags, type DefectiveBagRow } from '@/lib/recipesDb';
+import { BagsClientsRanking } from '@/components/BagsClientsRanking';
 
 export function Dashboard() {
   const { employees, records: attRecords, loading: attLoading } = useAttendance();
@@ -148,34 +149,37 @@ export function Dashboard() {
       {/* Capacity projection */}
       <CapacityProjectionCard />
 
-      {/* Defective bags wastage widget */}
-      <div className="glass-card p-4" style={{ boxShadow: '0 0 0 1px hsl(50 100% 55% / 0.25), 0 0 16px hsl(50 100% 55% / 0.18)' }}>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold text-foreground flex items-center gap-2">
-            <PackageX className="w-4 h-4" style={{ color: 'hsl(50 100% 60%)' }} /> Desperdicio de Bolsas
-          </h3>
-          <span className="text-xs text-muted-foreground">{totalDefBags.toLocaleString()} de {totalBags.toLocaleString()}</span>
+      {/* Desperdicio de bolsas + Ranking clientes (2 columnas) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        <div className="glass-card p-4" style={{ boxShadow: '0 0 0 1px hsl(50 100% 55% / 0.25), 0 0 16px hsl(50 100% 55% / 0.18)' }}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <PackageX className="w-4 h-4" style={{ color: 'hsl(50 100% 60%)' }} /> Desperdicio de Bolsas
+            </h3>
+            <span className="text-xs text-muted-foreground">{totalDefBags.toLocaleString()} de {totalBags.toLocaleString()}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+            <div className="flex justify-center">
+              <ResponsiveContainer width="100%" height={120}>
+                <PieChart>
+                  <Pie data={wasteData} dataKey="value" innerRadius={32} outerRadius={48} stroke="none">
+                    {wasteData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">% Desperdicio</p>
+              <p className="text-3xl font-bold" style={{ color: 'hsl(50 100% 60%)' }}>{wastagePct.toFixed(2)}%</p>
+            </div>
+            <div className="text-xs space-y-1">
+              <div className="flex justify-between"><span className="text-muted-foreground">Fábrica:</span><strong className="text-foreground">{(defByOrigin['Fábrica'] || 0).toLocaleString()}</strong></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Obrero:</span><strong className="text-foreground">{(defByOrigin['Obrero'] || 0).toLocaleString()}</strong></div>
+              <div className="flex justify-between border-t border-border/50 pt-1 mt-1"><span className="text-muted-foreground">Exitosas:</span><strong className="text-foreground">{totalGoodBags.toLocaleString()}</strong></div>
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
-          <div className="flex justify-center">
-            <ResponsiveContainer width="100%" height={120}>
-              <PieChart>
-                <Pie data={wasteData} dataKey="value" innerRadius={32} outerRadius={48} stroke="none">
-                  {wasteData.map((e, i) => <Cell key={i} fill={e.color} />)}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground">% Desperdicio</p>
-            <p className="text-3xl font-bold" style={{ color: 'hsl(50 100% 60%)' }}>{wastagePct.toFixed(2)}%</p>
-          </div>
-          <div className="text-xs space-y-1">
-            <div className="flex justify-between"><span className="text-muted-foreground">Fábrica:</span><strong className="text-foreground">{(defByOrigin['Fábrica'] || 0).toLocaleString()}</strong></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Obrero:</span><strong className="text-foreground">{(defByOrigin['Obrero'] || 0).toLocaleString()}</strong></div>
-            <div className="flex justify-between border-t border-border/50 pt-1 mt-1"><span className="text-muted-foreground">Exitosas:</span><strong className="text-foreground">{totalGoodBags.toLocaleString()}</strong></div>
-          </div>
-        </div>
+        <BagsClientsRanking />
       </div>
 
       {/* Stock alerts */}
