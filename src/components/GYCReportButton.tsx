@@ -44,6 +44,7 @@ export function GYCReportButton() {
     setGenerating(true);
     try {
       const { jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
       const doc = new jsPDF('p', 'mm', 'a4');
       const W = doc.internal.pageSize.getWidth();
       const H = doc.internal.pageSize.getHeight();
@@ -335,6 +336,94 @@ export function GYCReportButton() {
       kpi(ML + 1 * (pw + 3), y, pw, 20, 'Paletas en circulación', inCirculation.toLocaleString(), 'con clientes', C.warn);
       kpi(ML + 2 * (pw + 3), y, pw, 20, 'Deudores activos', String(balances.filter(b => b.balance > 0).length), 'clientes', C.danger);
       y += 24;
+
+      // ============================ PAGE 2 — MATERIA PRIMA DETALLADA ============================
+      doc.addPage();
+      page++;
+      pageBg();
+      drawFooter();
+
+      // Corporate blue/gray header
+      const CORP_BLUE: [number, number, number] = [37, 99, 165];
+      const CORP_BLUE_SOFT: [number, number, number] = [219, 234, 254];
+      const CORP_GRAY: [number, number, number] = [71, 85, 105];
+
+      doc.setFillColor(...CORP_BLUE);
+      doc.rect(0, 0, W, 3, 'F');
+      setText(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(20);
+      doc.text('Materia Prima', ML, 18);
+      setText(CORP_GRAY); doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+      doc.text('Detalle completo de inventario y movimientos', ML, 24);
+      setText(CORP_GRAY); doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+      doc.text(format(now, "dd/MM/yyyy HH:mm"), W - MR, 18, { align: 'right' });
+      doc.setDrawColor(...CORP_BLUE); doc.setLineWidth(0.5);
+      doc.line(ML, 28, W - MR, 28);
+
+      let y2 = 38;
+
+      // Stock actual por material
+      setText(CORP_BLUE); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+      doc.text('Stock Actual por Material', ML, y2); y2 += 4;
+
+      autoTable(doc, {
+        startY: y2,
+        head: [['Material', 'Stock Actual', 'Unidad', 'Última Actualización']],
+        body: [...materialStock]
+          .sort((a, b) => a.material_name.localeCompare(b.material_name))
+          .map(m => [
+            m.material_name,
+            Number(m.stock || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }),
+            m.unit || '—',
+            m.updated_at ? format(new Date(m.updated_at), 'dd/MM/yyyy HH:mm') : '—',
+          ]),
+        theme: 'grid',
+        margin: { left: ML, right: MR },
+        styles: { font: 'helvetica', fontSize: 9, cellPadding: 3, textColor: [30, 34, 45], lineColor: [203, 213, 225], lineWidth: 0.15 },
+        headStyles: { fillColor: CORP_BLUE, textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' },
+        alternateRowStyles: { fillColor: [248, 250, 253] },
+        columnStyles: {
+          0: { cellWidth: 60, fontStyle: 'bold' },
+          1: { halign: 'right', cellWidth: 35 },
+          2: { halign: 'center', cellWidth: 25 },
+          3: { halign: 'right' },
+        },
+      });
+
+      y2 = (doc as any).lastAutoTable.finalY + 10;
+
+      // Movimientos recientes
+      if (rawRecords.length) {
+        y2 = ensure(y2, 20);
+        setText(CORP_BLUE); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+        doc.text('Historial de Entradas de Materia Prima', ML, y2); y2 += 4;
+
+        autoTable(doc, {
+          startY: y2,
+          head: [['Fecha', 'Material', 'Cantidad', 'Unidad', 'Notas']],
+          body: [...rawRecords]
+            .sort((a, b) => b.date.localeCompare(a.date))
+            .slice(0, 60)
+            .map(r => [
+              r.date,
+              r.material_name,
+              r.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+              r.unit,
+              r.notes || '—',
+            ]),
+          theme: 'striped',
+          margin: { left: ML, right: MR },
+          styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.5, textColor: [30, 34, 45] },
+          headStyles: { fillColor: CORP_GRAY, textColor: [255, 255, 255], fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: CORP_BLUE_SOFT },
+          columnStyles: {
+            0: { cellWidth: 24 },
+            1: { cellWidth: 55, fontStyle: 'bold' },
+            2: { halign: 'right', cellWidth: 28 },
+            3: { halign: 'center', cellWidth: 22 },
+            4: { cellWidth: 'auto' },
+          },
+        });
+      }
 
       // ---- Save ----
       const fname = `PegoFlex_Reporte_${format(now, 'yyyy_MM_dd_HHmm')}.pdf`;
