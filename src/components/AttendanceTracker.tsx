@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { BulkAttendanceButton } from '@/components/BulkAttendanceButton';
 
 export function AttendanceTracker() {
   const { employees, records, loading, addEmployee, removeEmployee, checkIn, checkOut, markAbsent, resetRecord, getTodayRecord } = useAttendance();
@@ -143,6 +144,10 @@ export function AttendanceTracker() {
           </div>
           <Button onClick={handleAddSub} className="gradient-orange text-primary-foreground">Registrar Suplente</Button>
         </div>
+      )}
+
+      {isAdmin && employees.length > 0 && (
+        <BulkAttendanceButton dateStr={dateStr} />
       )}
 
       <div className="grid gap-3">

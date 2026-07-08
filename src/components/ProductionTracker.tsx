@@ -3,7 +3,7 @@ import { useProduction } from '@/hooks/useProduction';
 import { useRole } from '@/contexts/RoleContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Package, Plus, Trash2, CalendarIcon, AlertTriangle } from 'lucide-react';
+import { Package, Plus, Trash2, CalendarIcon, AlertTriangle, Calculator } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
@@ -18,6 +18,7 @@ import { PinConfirmDialog } from '@/components/PinConfirmDialog';
 import { useAudits, formatAuditStamp } from '@/lib/audit';
 import { VoiceInputButton } from '@/components/VoiceInputButton';
 import { extractNumber, extractProduct } from '@/hooks/useVoiceInput';
+import { ProductionCalculatorModal } from '@/components/ProductionCalculatorModal';
 
 const PRODUCT_OPTIONS = ['Pego Gris', 'Pego Blanco', 'Pego Premium'];
 
@@ -39,6 +40,8 @@ export function ProductionTracker() {
   const [defOrigin, setDefOrigin] = useState<DefectiveOrigin>('Fábrica');
   const [pendingDefects, setPendingDefects] = useState<{ product: 'Pego Gris' | 'Pego Blanco' | 'Pego Premium'; qty: number; origin: DefectiveOrigin }[]>([]);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
+  const [pendingCalc, setPendingCalc] = useState<Record<string, number>>({});
 
   const productToBag: Record<string, 'Bolsa Gris' | 'Bolsa Blanco' | 'Bolsa Premium'> = {
     'Pego Gris': 'Bolsa Gris',
@@ -183,6 +186,30 @@ export function ProductionTracker() {
           </Button>
         )}
       </div>
+
+      {canCreate && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" onClick={() => setCalcOpen(true)} variant="outline" className="border-primary/40 text-primary hover:bg-primary/10">
+            <Calculator className="w-4 h-4 mr-2" /> Calcular Producción
+          </Button>
+          {Object.keys(pendingCalc).length > 0 && (
+            <div className="flex flex-wrap gap-1.5 text-xs">
+              {Object.entries(pendingCalc).map(([p, q]) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => { setProductName(p); setQuantity(String(q)); }}
+                  className="px-2 py-1 rounded border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+                  title="Cargar en formulario"
+                >
+                  {p}: <strong>{q}</strong> sacos
+                </button>
+              ))}
+              <button type="button" onClick={() => setPendingCalc({})} className="text-muted-foreground hover:text-destructive px-1">×</button>
+            </div>
+          )}
+        </div>
+      )}
 
       {canCreate && (
         <div className="glass-card p-4 space-y-3">
@@ -404,6 +431,22 @@ export function ProductionTracker() {
         description="Se borrarán todos los registros de producción. Esta acción no devolverá automáticamente el stock. Ingresa la clave de administrador."
         destructiveLabel="Eliminar todo"
         onConfirm={async () => { await removeAllRecords(); toast.success('Historial de producción eliminado'); }}
+      />
+      <ProductionCalculatorModal
+        open={calcOpen}
+        onOpenChange={setCalcOpen}
+        onApply={(results) => {
+          setPendingCalc(results);
+          const entries = Object.entries(results).filter(([, q]) => q > 0);
+          if (entries.length > 0) {
+            const [firstP, firstQ] = entries[0];
+            setProductName(firstP);
+            setQuantity(String(firstQ));
+            toast.success('Resultados aplicados', {
+              description: entries.length > 1 ? `Formulario cargado con ${firstP}. Los otros productos quedaron como accesos rápidos.` : `${firstP}: ${firstQ} sacos`,
+            });
+          }
+        }}
       />
     </div>
   );
