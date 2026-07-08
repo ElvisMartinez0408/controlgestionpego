@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { DollarSign, Plus, Trash2, Edit2, Check, X, AlertTriangle, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { SmartUploadButton } from '@/components/SmartUploadButton';
+import { BatchSmartUploadButton } from '@/components/BatchSmartUploadButton';
 import { PinConfirmDialog } from '@/components/PinConfirmDialog';
 import { useAudits, formatAuditStamp } from '@/lib/audit';
 import { addMovement, removeMovementsBySale } from '@/lib/palletsDb';
@@ -147,7 +148,10 @@ export function SalesTracker() {
             <h3 className="font-semibold text-foreground flex items-center gap-2">
               <Plus className="w-4 h-4 text-primary" /> Nueva Venta
             </h3>
-            <SmartUploadButton />
+            <div className="flex items-center gap-2">
+              <SmartUploadButton />
+              <BatchSmartUploadButton />
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
