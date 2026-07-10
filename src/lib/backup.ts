@@ -46,6 +46,13 @@ export interface RestoreResult {
   log: RestoreLogEntry[];
 }
 
+export interface RestoreProgress {
+  phase: 'validate' | 'wipe' | 'insert' | 'dexie' | 'localStorage' | 'done';
+  label: string;
+  percent: number; // 0..100
+}
+export type ProgressCb = (p: RestoreProgress) => void;
+
 /** Deep structural validation. Throws on missing/invalid required shape. */
 export function validateBackupPayload(p: any): { ok: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -127,12 +134,14 @@ function chunk<T>(arr: T[], size = 200): T[][] {
  *    per-row inserts so ONE bad row cannot corrupt an entire table.
  *  - Returns a structured log of every warning/error to surface in the UI.
  */
-export async function importBackup(payload: BackupPayload): Promise<RestoreResult> {
+export async function importBackup(payload: BackupPayload, onProgress?: ProgressCb): Promise<RestoreResult> {
   const log: RestoreLogEntry[] = [];
   let inserted = 0;
   let failed = 0;
+  const emit = (p: RestoreProgress) => { try { onProgress?.(p); } catch {} };
 
   // 0. Validation
+  emit({ phase: 'validate', label: 'Validando estructura del archivo…', percent: 2 });
   const v = validateBackupPayload(payload);
   if (!v.ok) {
     v.errors.forEach(e => log.push({ scope: 'validation', target: 'payload', level: 'error', message: e }));
@@ -141,7 +150,9 @@ export async function importBackup(payload: BackupPayload): Promise<RestoreResul
   log.push({ scope: 'validation', target: 'payload', level: 'info', message: 'Estructura del respaldo válida' });
 
   // 1. Wipe Supabase tables
-  for (const t of SUPA_TABLES) {
+  for (let i = 0; i < SUPA_TABLES.length; i++) {
+    const t = SUPA_TABLES[i];
+    emit({ phase: 'wipe', label: `Vaciando tabla ${t}…`, percent: 5 + Math.round(((i + 1) / SUPA_TABLES.length) * 20) });
     const { error } = await (supabase as any).from(t).delete().neq('id', ANY_ID);
     if (error) {
       log.push({ scope: 'wipe', target: t, level: 'warn', message: `No se pudo vaciar completamente`, detail: error.message });
@@ -149,8 +160,10 @@ export async function importBackup(payload: BackupPayload): Promise<RestoreResul
   }
 
   // 2. Insert with batch-then-row fallback
-  for (const t of SUPA_TABLES) {
+  for (let i = 0; i < SUPA_TABLES.length; i++) {
+    const t = SUPA_TABLES[i];
     const rows = payload.supabase?.[t] || [];
+    emit({ phase: 'insert', label: `Importando ${t} (${rows.length})…`, percent: 25 + Math.round(((i + 1) / SUPA_TABLES.length) * 50) });
     if (!rows.length) continue;
     for (const batch of chunk(rows)) {
       const { error } = await (supabase as any).from(t).insert(batch);
@@ -168,6 +181,7 @@ export async function importBackup(payload: BackupPayload): Promise<RestoreResul
   }
 
   // 3. Dexie
+  emit({ phase: 'dexie', label: 'Restaurando almacén local…', percent: 82 });
   try {
     await Promise.all([
       recipesDb.recipes.clear(),
@@ -195,6 +209,7 @@ export async function importBackup(payload: BackupPayload): Promise<RestoreResul
   await safePut('audits', auditDb.audits, payload.dexie?.audits);
 
   // 4. localStorage
+  emit({ phase: 'localStorage', label: 'Aplicando preferencias…', percent: 95 });
   if (payload.localStorage) {
     for (const [k, v] of Object.entries(payload.localStorage)) {
       try {
@@ -209,6 +224,7 @@ export async function importBackup(payload: BackupPayload): Promise<RestoreResul
 
   const ok = log.every(l => l.level !== 'error');
   log.push({ scope: 'validation', target: 'summary', level: ok ? 'info' : 'warn', message: `Restauración finalizada · ${inserted} registros importados · ${failed} con error` });
+  emit({ phase: 'done', label: 'Restauración completada', percent: 100 });
   return { ok, totals: { inserted, failed }, log };
 }
 
