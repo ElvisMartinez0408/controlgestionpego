@@ -8,6 +8,7 @@ import { useStockAlerts } from '@/hooks/useStockAlerts';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { listDefectiveBags, type DefectiveBagRow } from '@/lib/recipesDb';
 import { BagsClientsRanking } from '@/components/BagsClientsRanking';
+import { InventoryWidget } from '@/components/InventoryWidget';
 
 export function Dashboard() {
   const { employees, records: attRecords, loading: attLoading } = useAttendance();
@@ -148,6 +149,9 @@ export function Dashboard() {
 
       {/* Capacity projection */}
       <CapacityProjectionCard />
+
+      {/* Inventario en vivo */}
+      <InventoryWidget />
 
       {/* Desperdicio de bolsas + Ranking clientes (2 columnas) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
