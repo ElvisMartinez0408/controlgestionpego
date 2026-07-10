@@ -1,10 +1,13 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, ShieldAlert, DatabaseBackup, AlertTriangle, CheckCircle2, XCircle, Info, Loader2 } from 'lucide-react';
-import { exportBackup, importBackup, readBackupFile, validateBackupPayload, type BackupPayload, type RestoreLogEntry, type RestoreResult } from '@/lib/backup';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { Download, Upload, ShieldAlert, DatabaseBackup, AlertTriangle, CheckCircle2, XCircle, Info, Loader2, RotateCcw, Trash2 } from 'lucide-react';
+import { exportBackup, importBackup, readBackupFile, validateBackupPayload, type BackupPayload, type RestoreLogEntry, type RestoreResult, type RestoreProgress } from '@/lib/backup';
 import { PinConfirmDialog } from '@/components/PinConfirmDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { fullSystemReset } from '@/lib/systemReset';
 
 export function BackupPanel() {
   const [exportPinOpen, setExportPinOpen] = useState(false);
@@ -15,6 +18,13 @@ export function BackupPanel() {
   const [isRestoring, setIsRestoring] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [result, setResult] = useState<RestoreResult | null>(null);
+  const [progress, setProgress] = useState<RestoreProgress | null>(null);
+  const [progressOpen, setProgressOpen] = useState(false);
+  // System reset state
+  const [resetPinOpen, setResetPinOpen] = useState(false);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [resetWord, setResetWord] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const onFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,22 +70,49 @@ export function BackupPanel() {
     }
     setIsRestoring(true);
     setBusy(true);
+    setProgress({ phase: 'validate', label: 'Iniciando restauración…', percent: 0 });
+    setConfirmOpen(false);
+    setProgressOpen(true);
     try {
-      const res = await importBackup(pendingPayload);
+      const res = await importBackup(pendingPayload, (p) => setProgress(p));
       console.log('[BackupPanel] restore result', res);
       setResult(res);
-      setConfirmOpen(false);
       setPendingPayload(null);
+      setProgressOpen(false);
       setLogOpen(true);
       if (res.ok) toast.success(`Respaldo cargado · ${res.totals.inserted} registros`);
       else toast.error(`Restauración finalizó con ${res.totals.failed} errores · revisa el log`);
     } catch (err: any) {
       console.error('[BackupPanel] restore failed', err);
+      setProgressOpen(false);
       toast.error(err?.message || 'Error al cargar respaldo');
       alert('Error al restaurar respaldo: ' + (err?.message || 'desconocido'));
     } finally {
       setIsRestoring(false);
       setBusy(false);
+    }
+  };
+
+  const handleResetPinOk = async () => {
+    setResetWord('');
+    setResetConfirmOpen(true);
+  };
+
+  const handleResetConfirmed = async () => {
+    if (resetWord.trim().toUpperCase() !== 'CONFIRMAR') {
+      toast.error('Debes escribir CONFIRMAR para continuar');
+      return;
+    }
+    setIsResetting(true);
+    try {
+      await fullSystemReset();
+      toast.success('Sistema restaurado · recetas y empleados conservados');
+      setResetConfirmOpen(false);
+      setTimeout(() => window.location.reload(), 700);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al restaurar el sistema');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -133,9 +170,28 @@ export function BackupPanel() {
         </div>
       </div>
 
+      {/* Reset System */}
+      <div className="glass-card p-5 space-y-3 border-destructive/60">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0">
+            <RotateCcw className="w-5 h-5 text-destructive" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-bold text-foreground">Restaurar Sistema desde Cero</h4>
+            <p className="text-xs text-muted-foreground">
+              Vacía <strong>historiales de ventas, producción, guías, asistencia e inventario</strong>.
+              Se conservan: <strong>recetas de fabricación, empleados y usuarios/permisos</strong>.
+            </p>
+          </div>
+        </div>
+        <Button variant="destructive" onClick={() => setResetPinOpen(true)} disabled={isResetting}>
+          <Trash2 className="w-4 h-4 mr-2" /> Restaurar Sistema
+        </Button>
+      </div>
+
       <div className="text-[11px] text-muted-foreground flex items-start gap-2">
         <ShieldAlert className="w-3.5 h-3.5 mt-0.5 text-primary shrink-0" />
-        Ambas operaciones requieren validar nuevamente la clave del Administrador vigente.
+        Todas las operaciones requieren validar la clave del Administrador vigente.
       </div>
 
       {/* PIN gates */}
@@ -155,6 +211,47 @@ export function BackupPanel() {
         destructiveLabel="Continuar"
         onConfirm={handleImportPinOk}
       />
+      <PinConfirmDialog
+        open={resetPinOpen}
+        onOpenChange={setResetPinOpen}
+        title="Confirmar Restauración del Sistema"
+        description="Ingresa tu clave de administrador para continuar con la restauración."
+        destructiveLabel="Continuar"
+        onConfirm={handleResetPinOk}
+      />
+
+      {/* Reset confirmation with typed word */}
+      <Dialog open={resetConfirmOpen} onOpenChange={(o) => { setResetConfirmOpen(o); if (!o) setResetWord(''); }}>
+        <DialogContent className="bg-card border-destructive/60 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" /> Restauración irreversible
+            </DialogTitle>
+            <DialogDescription className="text-foreground/90 space-y-2">
+              <span className="block">Se eliminarán todos los historiales operativos del sistema.</span>
+              <span className="block">Para confirmar escribe <strong className="text-destructive">CONFIRMAR</strong> en el campo siguiente:</span>
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={resetWord}
+            onChange={(e) => setResetWord(e.target.value)}
+            placeholder="CONFIRMAR"
+            autoFocus
+            className="uppercase tracking-widest text-center font-bold"
+          />
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setResetConfirmOpen(false)} disabled={isResetting}>Cancelar</Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isResetting || resetWord.trim().toUpperCase() !== 'CONFIRMAR'}
+              onClick={handleResetConfirmed}
+            >
+              {isResetting ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Restaurando…</>) : 'Restaurar todo'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Critical confirmation modal */}
       <Dialog open={confirmOpen} onOpenChange={(o) => { setConfirmOpen(o); if (!o) setPendingPayload(null); }}>
@@ -181,6 +278,24 @@ export function BackupPanel() {
               ) : 'Sí, reemplazar todo'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Live restore progress */}
+      <Dialog open={progressOpen} onOpenChange={(o) => { if (!isRestoring) setProgressOpen(o); }}>
+        <DialogContent className="bg-card border-primary/40 max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <Loader2 className="w-5 h-5 text-primary animate-spin" /> Restaurando respaldo
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {progress?.label || 'Preparando…'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Progress value={progress?.percent ?? 0} className="h-2" />
+            <p className="text-xs text-right text-muted-foreground">{progress?.percent ?? 0}%</p>
+          </div>
         </DialogContent>
       </Dialog>
 
