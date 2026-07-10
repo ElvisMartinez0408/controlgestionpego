@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -26,6 +26,18 @@ export function BackupPanel() {
   const [resetWord, setResetWord] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const pendingPayloadRef = useRef<BackupPayload | null>(null);
+
+  useEffect(() => {
+    if (confirmOpen) {
+      console.log('[BackupPanel] modal de reemplazo abierto', {
+        hasPayloadState: !!pendingPayload,
+        hasPayloadRef: !!pendingPayloadRef.current,
+        isRestoring,
+        buttonDisabled: false,
+      });
+    }
+  }, [confirmOpen, pendingPayload, isRestoring]);
 
   const onFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -41,6 +53,7 @@ export function BackupPanel() {
         return;
       }
       setPendingPayload(payload);
+      pendingPayloadRef.current = payload;
       setImportPinOpen(true);
     } catch {
       toast.error('No se pudo leer el archivo de respaldo');
@@ -63,8 +76,13 @@ export function BackupPanel() {
   };
 
   const handleRestore = async () => {
-    console.log('[BackupPanel] handleRestore triggered', { hasPayload: !!pendingPayload });
-    if (!pendingPayload) {
+    const restorePayload = pendingPayload ?? pendingPayloadRef.current;
+    console.log('[BackupPanel] handleRestore disparado sin bloqueo', {
+      hasPayloadState: !!pendingPayload,
+      hasPayloadRef: !!pendingPayloadRef.current,
+      isRestoring,
+    });
+    if (!restorePayload) {
       toast.error('No hay respaldo cargado');
       return;
     }
@@ -74,10 +92,11 @@ export function BackupPanel() {
     setConfirmOpen(false);
     setProgressOpen(true);
     try {
-      const res = await importBackup(pendingPayload, (p) => setProgress(p));
+      const res = await importBackup(restorePayload, (p) => setProgress(p));
       console.log('[BackupPanel] restore result', res);
       setResult(res);
       setPendingPayload(null);
+      pendingPayloadRef.current = null;
       setProgressOpen(false);
       setLogOpen(true);
       if (res.ok) toast.success(`Respaldo cargado · ${res.totals.inserted} registros`);
@@ -205,7 +224,7 @@ export function BackupPanel() {
       />
       <PinConfirmDialog
         open={importPinOpen}
-        onOpenChange={(o) => { setImportPinOpen(o); if (!o && !confirmOpen) setPendingPayload(null); }}
+        onOpenChange={setImportPinOpen}
         title="Confirmar Carga de Respaldo"
         description="Ingresa tu clave de administrador para continuar."
         destructiveLabel="Continuar"
@@ -254,7 +273,13 @@ export function BackupPanel() {
       </Dialog>
 
       {/* Critical confirmation modal */}
-      <Dialog open={confirmOpen} onOpenChange={(o) => { setConfirmOpen(o); if (!o) setPendingPayload(null); }}>
+      <Dialog open={confirmOpen} onOpenChange={(o) => {
+        setConfirmOpen(o);
+        if (!o && !isRestoring) {
+          setPendingPayload(null);
+          pendingPayloadRef.current = null;
+        }
+      }}>
         <DialogContent className="bg-card border-destructive/60 max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
@@ -270,8 +295,8 @@ export function BackupPanel() {
             <Button
               type="button"
               variant="destructive"
-              onClick={handleRestore}
-              disabled={isRestoring || !pendingPayload}
+              onClick={() => void handleRestore()}
+              className="opacity-100 cursor-pointer"
             >
               {isRestoring ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Restaurando…</>
